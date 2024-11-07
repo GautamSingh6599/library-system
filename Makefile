@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Werror
-SRC = src/main.c
+CFLAGS = -Wall -Werror -lncurses
+SRC = src/tui.c
 # Header files
 INCLUDES = -I include/
 # Output executable
@@ -11,7 +11,7 @@ all: $(OUTPUT)
 
 # Build executable
 $(OUTPUT): $(SRC)
-	$(CC) $(CFLAGS) $(SRC) $(INCLUDES) -o $(OUTPUT)
+	$(CC) $(SRC) $(INCLUDES) -o $(OUTPUT) $(CFLAGS)
 
 # Clean build files
 clean:

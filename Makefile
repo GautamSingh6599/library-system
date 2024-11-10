@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Werror -lncurses
+CFLAGS = -Werror -lncurses -lpanel -lform -lmenu
 SRC = src/tui.c
 # Header files
 INCLUDES = -I include/
@@ -11,7 +11,7 @@ all: $(OUTPUT)
 
 # Build executable
 $(OUTPUT): $(SRC)
-	$(CC) $(SRC) $(INCLUDES) -o $(OUTPUT) $(CFLAGS)
+	$(CC) $(CFLAGS) $(SRC) $(INCLUDES) -o $(OUTPUT)
 
 # Clean build files
 clean:

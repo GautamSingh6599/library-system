@@ -1,530 +1,318 @@
 // Copyright [2024]
 // Gautam Singh
-// Rishab P. Hariharan
-
-#include "../include/tui.h"
-#include <ctype.h>
-#include <curses.h>
-#include <form.h>
-#include <menu.h>
+#include <locale.h>
 #include <ncurses.h>
-#include <panel.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <string.h>
-#include <unistd.h>
+#include <wchar.h>
 
-#define EXIT_SUCCESS 0
+#define MAX_BOOKS 34 // Maximum books on screen
 
-extern char *user;
+typedef struct {
+  int id;
+  wchar_t isbn[20];
+  wchar_t title[300];
+  wchar_t author[150];
+  int year;
+  wchar_t publisher[150];
+  int copies;
+} Book;
 
-// Global variables for windows and panels
-WINDOW *title_win, *main_win, *bottom_win;
-PANEL *title_panel, *main_panel, *bottom_pnl;
+/*int lines() {*/
+/*  setlocale(LC_ALL, "en_US.UTF-8");*/
+/**/
+/*  // Open the file in read mode*/
+/*  FILE *file = fopen("final_books.csv", "r");*/
+/*  if (file == NULL) {*/
+/*    perror("Error opening library database.");*/
+/*    return EXIT_FAILURE;*/
+/*  }*/
+/**/
+/*  // Set up iconv for converting ISO-8859-1 to UTF-8*/
+/*  iconv_t cd = iconv_open("UTF-8", "ISO-8859-1");*/
+/*  if (cd == (iconv_t)-1) {*/
+/*    perror("Error opening iconv conversion");*/
+/*    fclose(file);*/
+/*    return EXIT_FAILURE;*/
+/*  }*/
+/**/
+/*  int count = 0;*/
+/*  char inbuf[1024], outbuf[1024];*/
+/*  size_t inbytesleft, outbytesleft;*/
+/**/
+/*  while (fgets(inbuf, sizeof(inbuf), file)) {*/
+/*    inbytesleft = strlen(inbuf);*/
+/*    outbytesleft = sizeof(outbuf);*/
+/**/
+/*    char *inptr = inbuf;*/
+/*    char *outptr = outbuf;*/
+/**/
+/*    // Perform encoding conversion from ISO-8859-1 to UTF-8*/
+/*    size_t ret = iconv(cd, &inptr, &inbytesleft, &outptr, &outbytesleft);*/
+/*    if (ret == (size_t)-1) {*/
+/*      perror("Error converting encoding");*/
+/*      continue;*/
+/*    }*/
+/**/
+/*    // Now outbuf contains the UTF-8 version of the line*/
+/*    // Process this line to count newlines*/
+/*    for (int i = 0; outbuf[i] != '\0'; i++) {*/
+/*      if (outbuf[i] == '\n') {*/
+/*        count++;*/
+/*      }*/
+/*    }*/
+/*  }*/
+/**/
+/*  // Close iconv and file*/
+/*  iconv_close(cd);*/
+/*  fclose(file);*/
+/*  return count;*/
+/*}*/
+/**/
+/*int readFile(Book *library, int numBooks) {*/
+/*  FILE *file = fopen("final_books.csv", "r, ccs=UTF-8");*/
+/*  if (file == NULL) {*/
+/*    perror("Error opening library database.");*/
+/*    return EXIT_FAILURE;*/
+/*  }*/
+/**/
+/*  wchar_t line[1024];*/
+/*  int i = 0;*/
+/**/
+/*  // Skip the header row*/
+/*  fgetws(line, sizeof(line) / sizeof(wchar_t), file);*/
+/**/
+/*  while (fgetws(line, sizeof(line) / sizeof(wchar_t), file) != NULL &&*/
+/*         i < numBooks) {*/
+/*    // Remove trailing newline characters*/
+/*    line[wcslen(line) - 1] =*/
+/*        (line[wcslen(line) - 1] == L'\n') ? L'\0' : line[wcslen(line) - 1];*/
+/*    line[wcslen(line) - 1] =*/
+/*        (line[wcslen(line) - 1] == L'\r') ? L'\0' : line[wcslen(line) - 1];*/
+/**/
+/*    // Debug: print the line read from the file*/
+/**/
+/*    wchar_t *token;*/
+/*    wchar_t *saveptr;*/
+/**/
+/*    // Use wcstok to parse each field*/
+/*    token = wcstok(line, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      library[i].slno = wcstoll(token, NULL, 10);*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      library[i].ISBN = wcstoll(token, NULL, 10);*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      wcsncpy(library[i].title, token, 299);*/
+/*    library[i].title[299] = L'\0'; // Ensure null termination*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      wcsncpy(library[i].author, token, 149);*/
+/*    library[i].author[149] = L'\0';*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      library[i].yearPub = wcstol(token, NULL, 10);*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      wcsncpy(library[i].publisher, token, 149);*/
+/*    library[i].publisher[149] = L'\0';*/
+/**/
+/*    token = wcstok(NULL, L",", &saveptr);*/
+/*    if (token != NULL)*/
+/*      library[i].copies = wcstol(token, NULL, 10);*/
+/**/
+/*    // Move to the next book entry*/
+/*    i++;*/
+/*  }*/
+/**/
+/*  fclose(file);*/
+/*  return EXIT_SUCCESS;*/
+/*}*/
 
-// Function to create a window
-WINDOW *create_newwin(int height, int width, int starty, int startx) {
-  WINDOW *local_win;
-  local_win = newwin(height, width, starty, startx);
-  box(local_win, 0, 0);
-  wrefresh(local_win);
-  return local_win;
+Book library[MAX_BOOKS] = {
+    {1, L"978-0131103627",
+     L"The C "
+     L"Prograhbiidkfjsdfnsdjfsndjfnsjfndsjfnsjdfnjdfndjfndfdklsdjfnsdkfmmming "
+     L"Language",
+     L"Brian W. Kernighan", 1978, L"Prentice Hall", 5},
+    {2, L"978-0201633610", L"Design Patterns", L"Erich Gamma", 1994,
+     L"Addison-Wesley", 3},
+    {3, L"978-0262033848", L"Introduction to Algorithms", L"Cormen", 2009,
+     L"MIT Press", 7},
+    {4, L"978-0132350884", L"Clean Code", L"Robert C. Martin", 2008,
+     L"Prentice Hall", 2},
+    {5, L"978-0134494166", L"Effective Modern C++", L"Scott Meyers", 2014,
+     L"O'Reilly Media", 4},
+    {6, L"978-0131101630", L"The UNIX Programming Environment", L"Rob Pike",
+     1984, L"Prentice Hall", 1},
+    {7, L"978-0321751041", L"The C++ Programming Language",
+     L"Bjarne Stroustrup", 2013, L"Addison-Wesley", 6},
+    {8, L"978-1491903995", L"Fluent Python", L"Luciano Ramalho", 2015,
+     L"O'Reilly Media", 3},
+    {9, L"978-0134685991", L"Refactoring", L"Martin Fowler", 2018,
+     L"Addison-Wesley", 2},
+    {10, L"978-0596007126", L"Head First Design Patterns", L"Eric Freeman",
+     2004, L"O'Reilly Media", 8}};
+
+// Function to print the header
+void print_header(WINDOW *win) {
+  wattron(win, A_REVERSE);
+  mvwprintw(win, 0, 0, " %-6s  %-14s  %-83s  %-50s  %-4s  %-30s  %-4s ", "ID",
+            "ISBN", "Title", "Author", "Year", "Publisher", "Copies");
+  wattroff(win, A_REVERSE);
 }
 
-// Function to create the title bar
-void title_bar(const char *title, const char *button) {
-  werase(title_win);
-  box(title_win, 0, 0);
+// Function to print a single book entry with optional highlighting
+void print_book(WINDOW *win, int row, Book book, int highlight) {
+  if (highlight) {
+    wattron(win, A_STANDOUT); // Use standout mode for clear highlighting
+  }
 
-  // Print the title
-  mvwprintw(title_win, 1, 2, "%s", title);
+  // Print ID
+  mvwprintw(win, row, 0, " %-6d ", book.id);
 
-  // Print the button on the right side
-  int button_pos = getmaxx(title_win) - strlen(button) - 3;
-  mvwprintw(title_win, 1, button_pos, "[%s]", button);
+  // Print ISBN
+  mvwprintw(win, row, 8, " %-15ls ", book.isbn);
 
-  wrefresh(title_win);
-}
+  // Print Title
+  mvwprintw(win, row, 24, " %-83ls ", book.title);
 
-// Function to display content in the main window
-void display_main_content() {
-  werase(main_win);
-  box(main_win, 0, 0);
-  mvwprintw(main_win, 1, 2, "Main Content Window");
-  wrefresh(main_win);
-}
+  // Print Author
+  mvwprintw(win, row, 109, " %-50ls ", book.author);
 
-// Function to display content in the bottom window
-void display_bottom_content() {
-  werase(bottom_win);
-  box(bottom_win, 0, 0);
-  mvwprintw(bottom_win, 1, 2, "Bottom Window");
-  wrefresh(bottom_win);
-}
+  // Print Year
+  mvwprintw(win, row, 161, " %-4d ", book.year);
 
-// Function to initialize the UI
-void initialize_ui() {
-  // Initialize the ncurses mode
-  initscr();
-  cbreak();
-  noecho();
-  keypad(stdscr, TRUE);
-  refresh();
+  // Print Publisher
+  mvwprintw(win, row, 167, " %-30ls ", book.publisher);
 
-  int max_y, max_x;
-  getmaxyx(stdscr, max_y, max_x);
+  // Print Copies
+  mvwprintw(win, row, 199, " %-6d ", book.copies);
 
-  // Create windows
-  title_win = create_newwin(3, max_x, 0, 0);
-  main_win = create_newwin(max_y - 6, max_x, 3, 0);
-  bottom_win = create_newwin(3, max_x, max_y - 3, 0);
-
-  // Create panels
-  title_panel = new_panel(title_win);
-  main_panel = new_panel(main_win);
-  bottom_pnl = new_panel(bottom_win);
-
-  // Display initial content
-  title_bar("Library IISEK", "login");
-  display_main_content();
-  display_bottom_content();
-}
-
-void cleanup_ui() {
-  // Delete panels
-  del_panel(title_panel);
-  del_panel(main_panel);
-  del_panel(bottom_pnl);
-
-  // Delete windows
-  delwin(title_win);
-  delwin(main_win);
-  delwin(bottom_win);
-  refresh();
-
-  // End ncurses mode
-}
-
-void clear_line() {
-  int y;
-  y = getcury(stdscr);
-  move(y, 0);
-  clrtoeol();
-}
-
-void loading_bar() {
-  int width, y;
-  width = getmaxx(stdscr) - 15;
-  y = getcury(stdscr);
-  for (int i = 0; i < width; ++i) {
-    mvprintw(y, 0, "[%d %% loading] ", i * 100 / width);
-    for (int j = 0; j < i; ++j) {
-      printw("█");
-      usleep(100);
-    }
-    refresh();
-    clear_line();
+  if (highlight) {
+    wattroff(win, A_STANDOUT);
   }
 }
 
-void slow_print(char *str, int n) {
-  for (int i = 0; i < strlen(str); i++) {
-    printw("%c", str[i]);
-    usleep(n);
-    refresh();
-  }
-}
+// Function to display all books
+void display_books(WINDOW *win) {
+  int i;
+  int row = 1;
 
-void begin() {
-  slow_print("Starting library system.\n", 1000);
-  loading_bar();
-  clear();
-  refresh();
-  slow_print(R"EOF(void login(const char *role) {
-  FIELD *fields[3];
-  FORM *login_form;
-  WINDOW *form_win;
-  int ch, rows, cols;
+  // Print the header row
+  print_header(win);
 
-  // Create fields for Username and Password
-  fields[0] = new_field(1, 20, 2, 10, 0, 0);
-  fields[1] = new_field(1, 20, 4, 10, 0, 0);
-  fields[2] = NULL; // Terminate the field array
-
-  set_field_back(fields[0], A_UNDERLINE);
-  set_field_back(fields[1], A_UNDERLINE);
-  field_opts_off(fields[1], O_PUBLIC); // Password hidden
-
-  // Create the form
-  login_form = new_form(fields);
-  scale_form(login_form, &rows, &cols);
-
-  // Create window for the form
-  form_win = newwin(rows + 4, cols + 4, 10, 20);
-  keypad(form_win, TRUE);
-  box(form_win, 0, 0);
-  set_form_win(login_form, form_win);
-  set_form_sub(login_form, derwin(form_win, rows, cols, 1, 1));
-
-  post_form(login_form);
-  wrefresh(form_win);
-
-  char username[20], password[20];
-  int valid = 0;
-
-  while ((ch = wgetch(form_win)) != KEY_F(1)) {
-    switch (ch) {
-    case KEY_DOWN:
-      form_driver(login_form, REQ_NEXT_FIELD);
-      form_driver(login_form, REQ_END_LINE);
-      break;
-    case KEY_UP:
-      form_driver(login_form, REQ_PREV_FIELD);
-      form_driver(login_form, REQ_END_LINE);
-      break;
-    case KEY_BACKSPACE:
-    case 127:
-      form_driver(login_form, REQ_DEL_PREV);
-      break;
-    case 10: // Enter key
-      form_driver(login_form, REQ_NEXT_FIELD);
-      form_driver(login_form, REQ_PREV_FIELD);
-
-      // Get the input data
-      snprintf(username, sizeof(username), "%s",
-               trim_whitespaces(field_buffer(fields[0], 0)));
-      snprintf(password, sizeof(password), "%s",
-               trim_whitespaces(field_buffer(fields[1], 0)));
-
-      // Validate credentials
-      if (strcmp(role, "Admin") == 0) {
-        valid = check_admin_credentials(username, password);
-      } else {
-        valid = check_student_credentials(username, password);
-      }
-
-      if (valid) {
-        show_message("Access Granted");
-
-        // Cleanup login form and window
-        unpost_form(login_form);
-        free_form(login_form);
-        free_field(fields[0]);
-        free_field(fields[1]);
-        delwin(form_win);
-
-        // Clear screen and reinitialize the entire UI
-        clear();
-        refresh();
-        initialize_ui(); // Redraw everything
-        title_bar("Library IISERK", username); // Update title bar with username
-        return;
-      } else {
-        show_message("Invalid Credentials");
-      }
-      break;
-    default:
-      form_driver(login_form, ch);
-      break;
-    }
+  // Print all books
+  for (i = 0; i < MAX_BOOKS; i++) {
+    print_book(win, row, library[i], 0); // No highlighting initially
+    row++;
   }
 
-  // Cleanup login form and window
-  unpost_form(login_form);
-  free_form(login_form);
-  free_field(fields[0]);
-  free_field(fields[1]);
-  delwin(form_win);
+  // Move the cursor to the first row (positioning it after all the books are
+  // printed)
+  wmove(win, 1, 0); // Move cursor to row 1, column 0
 
-  // Redraw UI if login was cancelled
-  clear();
-  refresh();
-  initialize_ui(); // Redraw everything
-  title_bar("Library IISERK", "login");
-}
-      _/  _/  _/
-     _/      _/_/_/    _/  _/_/    _/_/_/  _/  _/_/  _/    _/
-    _/  _/  _/    _/  _/_/      _/    _/  _/_/      _/    _/  _/_/_/_/_/
-   _/  _/  _/    _/  _/        _/    _/  _/        _/    _/
-  _/  _/  _/_/_/    _/          _/_/_/  _/          _/_/_/
-                                                       _/
-                                                  _/_/
-
-                                      _/
-       _/_/_/  _/    _/    _/_/_/  _/_/_/_/    _/_/    _/_/_/  _/_/
-    _/_/      _/    _/  _/_/        _/      _/_/_/_/  _/    _/    _/
-       _/_/  _/    _/      _/_/    _/      _/        _/    _/    _/
-  _/_/_/      _/_/_/  _/_/_/        _/_/    _/_/_/  _/    _/    _/
-                 _/
-            _/_/
-
-  )EOF",
-             1000);
-  sleep(1);
-  clear();
-  refresh();
+  // Refresh the screen after printing all books
+  wnoutrefresh(win);
+  doupdate();
 }
 
-// Dummy credential check functions
-int check_admin_credentials(const char *username, const char *password) {
-  return (strcmp(username, "admin") == 0 && strcmp(password, "admin123") == 0);
-}
+// Function to update the display with the highlighted book
+void update_highlight(WINDOW *win, int highlight, int previous_highlight) {
+  int row;
 
-int check_student_credentials(const char *username, const char *password) {
-  return (strcmp(username, "student") == 0 &&
-          strcmp(password, "student123") == 0);
-}
-
-// Function to display a message in a popup window
-void show_message(const char *message) {
-  int rows, cols;
-  getmaxyx(stdscr, rows, cols);
-
-  // Create a new window for the message
-  WINDOW *msg_win = newwin(5, cols - 10, rows / 2 - 2, 5);
-  box(msg_win, 0, 0);
-
-  // Print the message in the center of the window
-  mvwprintw(msg_win, 2, 2, "%s", message);
-  wrefresh(msg_win);
-
-  // Wait for a short duration (e.g., 2 seconds)
-  nodelay(msg_win, TRUE); // Make window non-blocking
-  napms(2000);            // Wait for 200 milliseconds (2 seconds)
-
-  // Refresh the windows below to restore their content
-}
-
-// Function to trim leading and trailing whitespaces
-char *trim_whitespaces(char *str) {
-  // Trim leading spaces
-  while (isspace((unsigned char)*str))
-    str++;
-
-  // If the string is now empty, return it
-  if (*str == 0)
-    return str;
-
-  // Trim trailing spaces
-  char *end = str + strlen(str) - 1;
-  while (end > str && isspace((unsigned char)*end))
-    end--;
-
-  // Write the null terminator after the last non-whitespace character
-  *(end + 1) = '\0';
-
-  return str;
-}
-
-void login(const char *role) {
-  FIELD *fields[3];
-  FORM *login_form;
-  WINDOW *form_win;
-  int ch, rows, cols;
-
-  // Create fields for Username and Password
-  fields[0] = new_field(1, 20, 2, 10, 0, 0);
-  fields[1] = new_field(1, 20, 4, 10, 0, 0);
-  fields[2] = NULL; // Terminate the field array
-
-  set_field_back(fields[0], A_UNDERLINE);
-  set_field_back(fields[1], A_UNDERLINE);
-  field_opts_off(fields[1], O_PUBLIC); // Password hidden
-
-  // Create the form
-  login_form = new_form(fields);
-  scale_form(login_form, &rows, &cols);
-
-  // Create window for the form
-  form_win = newwin(rows + 4, cols + 4, 10, 20);
-  keypad(form_win, TRUE);
-  box(form_win, 0, 0);
-  set_form_win(login_form, form_win);
-  set_form_sub(login_form, derwin(form_win, rows, cols, 1, 1));
-
-  post_form(login_form);
-  wrefresh(form_win);
-
-  char username[20], password[20];
-  int valid = 0;
-
-  while ((ch = wgetch(form_win)) != KEY_F(1)) {
-    switch (ch) {
-    case KEY_DOWN:
-      form_driver(login_form, REQ_NEXT_FIELD);
-      form_driver(login_form, REQ_END_LINE);
-      break;
-    case KEY_UP:
-      form_driver(login_form, REQ_PREV_FIELD);
-      form_driver(login_form, REQ_END_LINE);
-      break;
-    case KEY_BACKSPACE:
-    case 127:
-      form_driver(login_form, REQ_DEL_PREV);
-      break;
-    case 10: // Enter key
-      form_driver(login_form, REQ_NEXT_FIELD);
-      form_driver(login_form, REQ_PREV_FIELD);
-
-      // Get the input data
-      snprintf(username, sizeof(username), "%s",
-               trim_whitespaces(field_buffer(fields[0], 0)));
-      snprintf(password, sizeof(password), "%s",
-               trim_whitespaces(field_buffer(fields[1], 0)));
-
-      // Validate credentials
-      if (strcmp(role, "Admin") == 0) {
-        valid = check_admin_credentials(username, password);
-      } else {
-        valid = check_student_credentials(username, password);
-      }
-
-      if (valid) {
-        show_message("Access Granted");
-
-        // Cleanup login form and window
-        unpost_form(login_form);
-        free_form(login_form);
-        free_field(fields[0]);
-        free_field(fields[1]);
-        delwin(form_win);
-
-        // Clear screen and reinitialize the entire UI
-        clear();
-        refresh();
-        initialize_ui();
-        user = username;
-        title_bar("Library IISERK", username);
-        return;
-      } else {
-        show_message("Invalid Credentials");
-      }
-      break;
-    case 27: // Escape key pressed
-      // Exit login and redraw everything
-      unpost_form(login_form);
-      free_form(login_form);
-      free_field(fields[0]);
-      free_field(fields[1]);
-      delwin(form_win);
-
-      clear();
-      refresh();
-      initialize_ui();
-      title_bar("Library IISERK", user);
-      return;
-    default:
-      form_driver(login_form, ch);
-      break;
-    }
+  // Remove highlight from previous book
+  if (previous_highlight != -1) {
+    row = previous_highlight + 1;
+    print_book(win, row, library[previous_highlight], 0); // No highlight
   }
 
-  // Cleanup if login was cancelled
-  unpost_form(login_form);
-  free_form(login_form);
-  free_field(fields[0]);
-  free_field(fields[1]);
-  delwin(form_win);
+  // Add highlight to current book
+  row = highlight + 1;
+  print_book(win, row, library[highlight], 1); // Highlight current book
 
-  clear();
-  refresh();
-  initialize_ui();
-  title_bar("Library IISERK", user);
-}
-
-void show_role_menu() {
-  ITEM *items[3];
-  MENU *menu;
-  WINDOW *menu_win;
-
-  char *choices[] = {"Admin", "Student", (char *)NULL};
-  int n_choices = sizeof(choices) / sizeof(char *) - 1;
-  int ch, selected;
-
-  // Create menu items
-  for (int i = 0; i < n_choices; ++i)
-    items[i] = new_item(choices[i], "");
-  items[n_choices] = (ITEM *)NULL;
-
-  // Create menu
-  menu = new_menu(items);
-  menu_win = newwin(10, 40, 4, 10);
-  keypad(menu_win, TRUE);
-
-  set_menu_win(menu, menu_win);
-  set_menu_sub(menu, derwin(menu_win, 6, 38, 3, 1));
-  set_menu_mark(menu, " * ");
-  box(menu_win, 0, 0);
-  mvwprintw(menu_win, 1, 2, "Select Role:");
-  post_menu(menu);
-  wrefresh(menu_win);
-
-  while ((ch = wgetch(menu_win)) != 'q') {
-    switch (ch) {
-    case KEY_DOWN:
-      menu_driver(menu, REQ_DOWN_ITEM);
-      break;
-    case KEY_UP:
-      menu_driver(menu, REQ_UP_ITEM);
-      break;
-    case 10: // Enter key
-      selected = item_index(current_item(menu));
-      unpost_menu(menu);
-      free_menu(menu);
-      for (int i = 0; i < n_choices; ++i)
-        free_item(items[i]);
-      delwin(menu_win);
-      login(choices[selected]);
-      return;
-    case 27: // Escape key pressed
-      // Exit role menu and redraw everything
-      unpost_menu(menu);
-      free_menu(menu);
-      for (int i = 0; i < n_choices; ++i)
-        free_item(items[i]);
-      delwin(menu_win);
-
-      clear();
-      refresh();
-      initialize_ui();
-      title_bar("Library IISERK", user);
-      return;
-    }
-    wrefresh(menu_win);
-  }
-
-  // Cleanup if menu was cancelled
-  unpost_menu(menu);
-  free_menu(menu);
-  for (int i = 0; i < n_choices; ++i)
-    free_item(items[i]);
-  delwin(menu_win);
-
-  clear();
-  refresh();
-  initialize_ui();
-  title_bar("Library IISERK", user);
+  // Refresh the screen efficiently
+  wnoutrefresh(win);
+  doupdate();
 }
 
 int main() {
-  curs_set(0);
-  initialize_ui();
+  // Set locale to support wide characters
+  setlocale(LC_ALL, "");
 
+  // Initialize ncurses
+  initscr();
+  noecho();
+  cbreak();
+  curs_set(0); // Hide the default cursor
+  start_color();
+
+  // Create a new window covering the entire screen
+  WINDOW *table_win = newwin(LINES, COLS, 0, 0);
+  keypad(table_win, TRUE); // Enable arrow keys
+
+  int highlight = -1;          // Index of the currently highlighted book
+  int previous_highlight = -1; // Track the previously highlighted book
   int ch;
-  while ((ch = getch())) {
+
+  // Display all books initially
+  display_books(table_win);
+
+  // Main loop for user input
+  while (1) {
+    ch = wgetch(table_win); // Wait for user input
+
+    previous_highlight = highlight;
+
     switch (ch) {
-    case 'l':
-      // Change button text on pressing 'b'
-      show_role_menu();
+    case 'k':
+      if (highlight <= 0) {
+        highlight = MAX_BOOKS - 1;
+      } else {
+        highlight--; // Move cursor up
+      }
       break;
+    case KEY_UP:
+      if (highlight <= 0) {
+        highlight = MAX_BOOKS - 1;
+      } else {
+        highlight--; // Move cursor up
+      }
+      break;
+    case 'j':
+      if (highlight < MAX_BOOKS - 1) {
+        highlight++; // Move cursor down
+      } else {
+        highlight = 0;
+      }
+      break;
+    case KEY_DOWN:
+      if (highlight < MAX_BOOKS - 1) {
+        highlight++; // Move cursor down
+      } else {
+        highlight = 0;
+      }
+      break;
+    case 'q':
+    case 'Q':
+      endwin(); // Exit ncurses mode
+      return 0;
     default:
-      // Restore default button text
-      title_bar("Library IISERK", user);
-      break;
+      if (highlight <= 0) {
+        highlight = previous_highlight;
+      }
     }
+
+    // Update display with new highlight
+    update_highlight(table_win, highlight, previous_highlight);
   }
 
-  cleanup_ui();
+  // Clean up ncurses
+  delwin(table_win);
   endwin();
   return 0;
 }

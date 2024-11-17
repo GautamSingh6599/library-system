@@ -3,24 +3,27 @@
 
 #include "../include/tui.h"
 #include "../include/book.h"
+#include <ncurses.h>
 
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
                   int author_width, int copies_width) {
-  wattron(win, A_REVERSE);
+  wattron(win, A_REVERSE | A_BOLD);
   mvwprintw(win, 0, 0, " %-*s %-*s %-*s %-*.*s %-*.*s ", id_width, "ID",
             isbn_width, "ISBN", copies_width, "Copies", title_width,
             title_width, "Title", author_width, author_width, "Author");
-  wattroff(win, A_REVERSE);
+  wattroff(win, A_REVERSE | A_BOLD);
 }
 
 // Function to print footer
 void print_footer(WINDOW *win) {
-  wattron(win, A_REVERSE);
+  wattron(win, A_REVERSE | A_BOLD);
   int x, y;
   getmaxyx(stdscr, y, x);
-  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Exit(q)");
-  wattroff(win, A_REVERSE);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
+            "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] SCROLLDOWN[j/DOWN] "
+            "SEARCH[/] LOGIN[l]");
+  wattroff(win, A_REVERSE | A_BOLD);
 }
 
 // Function to display error message in popup
@@ -214,7 +217,7 @@ int main(int argc, char *argv[]) {
     switch (ch) {
     case 'k':
     case KEY_UP:
-      if (highlight == 0) {
+      if (highlight <= 0) {
         highlight = MAX_BOOKS - 1;
       } else {
         highlight--;

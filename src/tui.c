@@ -4,22 +4,6 @@
 #include "../include/tui.h"
 #include "../include/book.h"
 
-Book library[10] = {
-    {1, 9780131103,
-     L"The C "
-     L"Prograhbiidkfjsdfnsdjfsndjfnsjfndsjfnsjdfnjdfndjfndfdklsdjfnsdkfmmming "
-     L"Language",
-     L"Brian W. Kernighan", 5},
-    {2, 9780201633, L"Design Patterns", L"Erich Gamma", 3},
-    {3, 9780262033, L"Introduction to Algorithms", L"Cormen", 7},
-    {4, 9780132350, L"Clean Code", L"Robert C. Martin", 2},
-    {5, 9780134494, L"Effective Modern C++", L"Scott Meyers", 4},
-    {6, 9780131101, L"The UNIX Programming Environment", L"Rob Pike", 1},
-    {7, 9780321751, L"The C++ Programming Language", L"Bjarne Stroustrup", 6},
-    {8, 9781491903, L"Fluent Python", L"Luciano Ramalho", 3},
-    {9, 9780134685, L"Refactoring", L"Martin Fowler", 2},
-    {10, 9978059600, L"Head First Design Patterns", L"Eric Freeman", 8}};
-
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
                   int author_width, int copies_width) {
@@ -78,7 +62,7 @@ void show_error_message(WINDOW *win, const char *message) {
 
 void print_book(WINDOW *win, int row, Book book, int highlight, int id_width,
                 int isbn_width, int title_width, int author_width,
-                int copies_width) {
+                int copies_width, Book *library) {
   if (highlight) {
     wattron(win, A_STANDOUT);
   }
@@ -91,7 +75,7 @@ void print_book(WINDOW *win, int row, Book book, int highlight, int id_width,
   }
 }
 
-void display_books(WINDOW *win) {
+void display_books(WINDOW *win, Book *library, int MAX_BOOKS) {
   int term_cols, term_rows;
   getmaxyx(win, term_rows, term_cols);
   if (term_cols < 30 || term_rows < 3) {
@@ -127,11 +111,11 @@ void display_books(WINDOW *win) {
   /*    "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",*/
   /*    id_width, isbn_width, copies_width, title_width, author_width,*/
   /*    getmaxx(win));*/
-  int row = 1;
   /*for (int i = 0; i < LINES - 2; i++) {*/
-  for (int i = 0; i < 10; i++) {
+  int row = 1;
+  for (int i = 0; i < MAX_BOOKS; i++) {
     print_book(win, row, library[i], 0, id_width, isbn_width, title_width,
-               author_width, copies_width);
+               author_width, copies_width, library);
     row++;
   }
 
@@ -142,7 +126,8 @@ void display_books(WINDOW *win) {
   doupdate();
 }
 
-void update_highlight(WINDOW *win, int highlight, int prev_highlight) {
+void update_highlight(WINDOW *win, int highlight, int prev_highlight,
+                      Book *library) {
   int row;
 
   int term_cols, term_rows;
@@ -172,27 +157,28 @@ void update_highlight(WINDOW *win, int highlight, int prev_highlight) {
                    2;
   }
 
+  if (highlight == -1 && prev_highlight == -1) {
+    return;
+  }
+
   if (prev_highlight != -1) {
     row = prev_highlight + 1;
 
     print_book(win, row, library[prev_highlight], 0, id_width, isbn_width,
-               title_width, author_width, copies_width);
+               title_width, author_width, copies_width, library);
   }
   // Highlight current book
-  mvwprintw(
-      win, 11, 0,
-      "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",
-      id_width, isbn_width, copies_width, title_width, author_width,
-      getmaxx(win));
-  mvwprintw(win, 12, 168, "He");
+  /*mvwprintw(*/
+  /*    win, 11, 0,*/
+  /*    "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",*/
+  /*    id_width, isbn_width, copies_width, title_width, author_width,*/
+  /*    getmaxx(win));*/
+  /*mvwprintw(win, 12, 168, "He");*/
   // Add highlight to current book
 
   row = highlight + 1;
-  if (row == 0) {
-    row = 1;
-  }
   print_book(win, row, library[highlight], 1, id_width, isbn_width, title_width,
-             author_width, copies_width);
+             author_width, copies_width, library);
   // Highlight current book
   // Refresh the screen efficiently
   wnoutrefresh(win);
@@ -212,9 +198,11 @@ int main(int argc, char *argv[]) {
 
   WINDOW *table_win = newwin(LINES, COLS, 0, 0);
   keypad(table_win, TRUE);
-  display_books(table_win);
+  int MAX_BOOKS = getmaxy(table_win) - 2;
+  int row = 1;
+  Book *library = window(1, MAX_BOOKS);
+  display_books(table_win, library, MAX_BOOKS);
   // int MAX_BOOKS = getmaxy(table_win) - 2;
-  int MAX_BOOKS = 10;
 
   int highlight = -1;
   int prev_highlight = -1;
@@ -240,6 +228,23 @@ int main(int argc, char *argv[]) {
         highlight++;
       }
       break;
+    case 'n':
+      row = MAX_BOOKS + row;
+      library = window(row, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS);
+      highlight = -1;
+      prev_highlight = -1;
+      break;
+    case 'N':
+      if (row - MAX_BOOKS <= 0) {
+        break;
+      }
+      row = row - MAX_BOOKS;
+      library = window(row, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS);
+      highlight = -1;
+      prev_highlight = -1;
+      break;
     case 'q':
     case 'Q':
       endwin();
@@ -247,7 +252,7 @@ int main(int argc, char *argv[]) {
     default:
       continue;
     }
-    update_highlight(table_win, highlight, prev_highlight);
+    update_highlight(table_win, highlight, prev_highlight, library);
   }
 
   delwin(table_win);

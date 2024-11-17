@@ -1,6 +1,7 @@
 // Copyright [2024]
 // Gautam Singh
 #include <locale.h>
+#include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 
@@ -8,7 +9,7 @@
 #ifndef INCLUDE_INCLUDE_BOOK_H_
 #define INCLUDE_INCLUDE_BOOK_H_
 
-#define EXIT_SUCCEESS 1
+#define MAX_LINE_LENGTH 1024
 
 typedef struct {
   long long id;
@@ -20,6 +21,4 @@ typedef struct {
 
 Book *window(long long start, int n);
 
-// temporary
-extern Book library[10];
 #endif

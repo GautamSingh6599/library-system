@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Werror -lncurses
+CFLAGS = -Werror -lncurses -g
 SRC = src/tui.c src/book.c
 # Header files
 INCLUDES = -I include/

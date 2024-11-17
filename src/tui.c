@@ -1,318 +1,256 @@
 // Copyright [2024]
 // Gautam Singh
-#include <locale.h>
-#include <ncurses.h>
-#include <wchar.h>
 
-#define MAX_BOOKS 34 // Maximum books on screen
+#include "../include/tui.h"
+#include "../include/book.h"
 
-typedef struct {
-  int id;
-  wchar_t isbn[20];
-  wchar_t title[300];
-  wchar_t author[150];
-  int year;
-  wchar_t publisher[150];
-  int copies;
-} Book;
-
-/*int lines() {*/
-/*  setlocale(LC_ALL, "en_US.UTF-8");*/
-/**/
-/*  // Open the file in read mode*/
-/*  FILE *file = fopen("final_books.csv", "r");*/
-/*  if (file == NULL) {*/
-/*    perror("Error opening library database.");*/
-/*    return EXIT_FAILURE;*/
-/*  }*/
-/**/
-/*  // Set up iconv for converting ISO-8859-1 to UTF-8*/
-/*  iconv_t cd = iconv_open("UTF-8", "ISO-8859-1");*/
-/*  if (cd == (iconv_t)-1) {*/
-/*    perror("Error opening iconv conversion");*/
-/*    fclose(file);*/
-/*    return EXIT_FAILURE;*/
-/*  }*/
-/**/
-/*  int count = 0;*/
-/*  char inbuf[1024], outbuf[1024];*/
-/*  size_t inbytesleft, outbytesleft;*/
-/**/
-/*  while (fgets(inbuf, sizeof(inbuf), file)) {*/
-/*    inbytesleft = strlen(inbuf);*/
-/*    outbytesleft = sizeof(outbuf);*/
-/**/
-/*    char *inptr = inbuf;*/
-/*    char *outptr = outbuf;*/
-/**/
-/*    // Perform encoding conversion from ISO-8859-1 to UTF-8*/
-/*    size_t ret = iconv(cd, &inptr, &inbytesleft, &outptr, &outbytesleft);*/
-/*    if (ret == (size_t)-1) {*/
-/*      perror("Error converting encoding");*/
-/*      continue;*/
-/*    }*/
-/**/
-/*    // Now outbuf contains the UTF-8 version of the line*/
-/*    // Process this line to count newlines*/
-/*    for (int i = 0; outbuf[i] != '\0'; i++) {*/
-/*      if (outbuf[i] == '\n') {*/
-/*        count++;*/
-/*      }*/
-/*    }*/
-/*  }*/
-/**/
-/*  // Close iconv and file*/
-/*  iconv_close(cd);*/
-/*  fclose(file);*/
-/*  return count;*/
-/*}*/
-/**/
-/*int readFile(Book *library, int numBooks) {*/
-/*  FILE *file = fopen("final_books.csv", "r, ccs=UTF-8");*/
-/*  if (file == NULL) {*/
-/*    perror("Error opening library database.");*/
-/*    return EXIT_FAILURE;*/
-/*  }*/
-/**/
-/*  wchar_t line[1024];*/
-/*  int i = 0;*/
-/**/
-/*  // Skip the header row*/
-/*  fgetws(line, sizeof(line) / sizeof(wchar_t), file);*/
-/**/
-/*  while (fgetws(line, sizeof(line) / sizeof(wchar_t), file) != NULL &&*/
-/*         i < numBooks) {*/
-/*    // Remove trailing newline characters*/
-/*    line[wcslen(line) - 1] =*/
-/*        (line[wcslen(line) - 1] == L'\n') ? L'\0' : line[wcslen(line) - 1];*/
-/*    line[wcslen(line) - 1] =*/
-/*        (line[wcslen(line) - 1] == L'\r') ? L'\0' : line[wcslen(line) - 1];*/
-/**/
-/*    // Debug: print the line read from the file*/
-/**/
-/*    wchar_t *token;*/
-/*    wchar_t *saveptr;*/
-/**/
-/*    // Use wcstok to parse each field*/
-/*    token = wcstok(line, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      library[i].slno = wcstoll(token, NULL, 10);*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      library[i].ISBN = wcstoll(token, NULL, 10);*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      wcsncpy(library[i].title, token, 299);*/
-/*    library[i].title[299] = L'\0'; // Ensure null termination*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      wcsncpy(library[i].author, token, 149);*/
-/*    library[i].author[149] = L'\0';*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      library[i].yearPub = wcstol(token, NULL, 10);*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      wcsncpy(library[i].publisher, token, 149);*/
-/*    library[i].publisher[149] = L'\0';*/
-/**/
-/*    token = wcstok(NULL, L",", &saveptr);*/
-/*    if (token != NULL)*/
-/*      library[i].copies = wcstol(token, NULL, 10);*/
-/**/
-/*    // Move to the next book entry*/
-/*    i++;*/
-/*  }*/
-/**/
-/*  fclose(file);*/
-/*  return EXIT_SUCCESS;*/
-/*}*/
-
-Book library[MAX_BOOKS] = {
-    {1, L"978-0131103627",
+Book library[10] = {
+    {1, 9780131103,
      L"The C "
      L"Prograhbiidkfjsdfnsdjfsndjfnsjfndsjfnsjdfnjdfndjfndfdklsdjfnsdkfmmming "
      L"Language",
-     L"Brian W. Kernighan", 1978, L"Prentice Hall", 5},
-    {2, L"978-0201633610", L"Design Patterns", L"Erich Gamma", 1994,
-     L"Addison-Wesley", 3},
-    {3, L"978-0262033848", L"Introduction to Algorithms", L"Cormen", 2009,
-     L"MIT Press", 7},
-    {4, L"978-0132350884", L"Clean Code", L"Robert C. Martin", 2008,
-     L"Prentice Hall", 2},
-    {5, L"978-0134494166", L"Effective Modern C++", L"Scott Meyers", 2014,
-     L"O'Reilly Media", 4},
-    {6, L"978-0131101630", L"The UNIX Programming Environment", L"Rob Pike",
-     1984, L"Prentice Hall", 1},
-    {7, L"978-0321751041", L"The C++ Programming Language",
-     L"Bjarne Stroustrup", 2013, L"Addison-Wesley", 6},
-    {8, L"978-1491903995", L"Fluent Python", L"Luciano Ramalho", 2015,
-     L"O'Reilly Media", 3},
-    {9, L"978-0134685991", L"Refactoring", L"Martin Fowler", 2018,
-     L"Addison-Wesley", 2},
-    {10, L"978-0596007126", L"Head First Design Patterns", L"Eric Freeman",
-     2004, L"O'Reilly Media", 8}};
+     L"Brian W. Kernighan", 5},
+    {2, 9780201633, L"Design Patterns", L"Erich Gamma", 3},
+    {3, 9780262033, L"Introduction to Algorithms", L"Cormen", 7},
+    {4, 9780132350, L"Clean Code", L"Robert C. Martin", 2},
+    {5, 9780134494, L"Effective Modern C++", L"Scott Meyers", 4},
+    {6, 9780131101, L"The UNIX Programming Environment", L"Rob Pike", 1},
+    {7, 9780321751, L"The C++ Programming Language", L"Bjarne Stroustrup", 6},
+    {8, 9781491903, L"Fluent Python", L"Luciano Ramalho", 3},
+    {9, 9780134685, L"Refactoring", L"Martin Fowler", 2},
+    {10, 9978059600, L"Head First Design Patterns", L"Eric Freeman", 8}};
 
-// Function to print the header
-void print_header(WINDOW *win) {
+// Function to print the header with dynamic column widths
+void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
+                  int author_width, int copies_width) {
   wattron(win, A_REVERSE);
-  mvwprintw(win, 0, 0, " %-6s  %-14s  %-83s  %-50s  %-4s  %-30s  %-4s ", "ID",
-            "ISBN", "Title", "Author", "Year", "Publisher", "Copies");
+  mvwprintw(win, 0, 0, " %-*s %-*s %-*s %-*.*s %-*.*s ", id_width, "ID",
+            isbn_width, "ISBN", copies_width, "Copies", title_width,
+            title_width, "Title", author_width, author_width, "Author");
   wattroff(win, A_REVERSE);
 }
 
-// Function to print a single book entry with optional highlighting
-void print_book(WINDOW *win, int row, Book book, int highlight) {
-  if (highlight) {
-    wattron(win, A_STANDOUT); // Use standout mode for clear highlighting
+// Function to print footer
+void print_footer(WINDOW *win) {
+  wattron(win, A_REVERSE);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Exit(q)");
+  wattroff(win, A_REVERSE);
+}
+
+// Function to display error message in popup
+void show_error_message(WINDOW *win, const char *message) {
+  int rows, columns;
+  getmaxyx(win, rows, columns);
+
+  int msg_len = strlen(message);
+  int msg_width = msg_len + 2;
+  // Fixed width for error window
+  int msg_heigth = 5;
+
+  if (msg_width > columns) {
+    msg_width = columns - 2;
   }
 
-  // Print ID
-  mvwprintw(win, row, 0, " %-6d ", book.id);
+  // Centering
+  int starty = (rows - msg_heigth) / 2;
+  int startx = (columns = msg_width) / 2;
 
-  // Print ISBN
-  mvwprintw(win, row, 8, " %-15ls ", book.isbn);
+  // Create a new window for the error message
+  WINDOW *error_win = newwin(msg_heigth, msg_width, starty, startx);
+  box(error_win, 0, 0);
 
-  // Print Title
-  mvwprintw(win, row, 24, " %-83ls ", book.title);
+  // Display the error message in the middle of the window
+  wattron(error_win, A_BOLD | A_STANDOUT);
+  mvwprintw(error_win, 2, 2, "%.*s", msg_width - 4, message);
+  wattroff(error_win, A_BOLD | A_STANDOUT);
 
-  // Print Author
-  mvwprintw(win, row, 109, " %-50ls ", book.author);
+  // Refresh the window to display the content
+  wrefresh(error_win);
 
-  // Print Year
-  mvwprintw(win, row, 161, " %-4d ", book.year);
+  // Wait for the user to press a key
+  wgetch(error_win);
 
-  // Print Publisher
-  mvwprintw(win, row, 167, " %-30ls ", book.publisher);
+  // Clean up the window
+  delwin(error_win);
+}
 
-  // Print Copies
-  mvwprintw(win, row, 199, " %-6d ", book.copies);
-
+void print_book(WINDOW *win, int row, Book book, int highlight, int id_width,
+                int isbn_width, int title_width, int author_width,
+                int copies_width) {
+  if (highlight) {
+    wattron(win, A_STANDOUT);
+  }
+  mvwprintw(win, row, 0, " %-*lld %-*lld %-*d %-*.*ls %-*.*ls ", id_width,
+            book.id, isbn_width, book.isbn, copies_width, book.copies,
+            title_width, title_width, book.title, author_width, author_width,
+            book.author);
   if (highlight) {
     wattroff(win, A_STANDOUT);
   }
 }
 
-// Function to display all books
 void display_books(WINDOW *win) {
-  int i;
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
+  }
+
+  int id_width, isbn_width, title_width, author_width, copies_width;
+  id_width = 6;
+  isbn_width = 10;
+  copies_width = 6;
+  title_width = 0;
+  author_width = 0;
+  int remaining =
+      COLS - ((id_width + 2) + (isbn_width + 2) + (copies_width + 2));
+  if (remaining < 80) {
+    title_width = remaining;
+  } else {
+    title_width = 80;
+    author_width = getmaxx(win) -
+                   ((id_width + 2) + (isbn_width + 2) + (copies_width + 2) +
+                    (title_width + 2)) +
+                   2;
+  }
+
+  print_header(win, id_width, isbn_width, title_width, author_width,
+               copies_width);
+
+  /*mvwprintw(*/
+  /*    win, 11, 0,*/
+  /*    "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",*/
+  /*    id_width, isbn_width, copies_width, title_width, author_width,*/
+  /*    getmaxx(win));*/
   int row = 1;
-
-  // Print the header row
-  print_header(win);
-
-  // Print all books
-  for (i = 0; i < MAX_BOOKS; i++) {
-    print_book(win, row, library[i], 0); // No highlighting initially
+  /*for (int i = 0; i < LINES - 2; i++) {*/
+  for (int i = 0; i < 10; i++) {
+    print_book(win, row, library[i], 0, id_width, isbn_width, title_width,
+               author_width, copies_width);
     row++;
   }
 
-  // Move the cursor to the first row (positioning it after all the books are
-  // printed)
-  wmove(win, 1, 0); // Move cursor to row 1, column 0
+  print_footer(win);
 
-  // Refresh the screen after printing all books
-  wnoutrefresh(win);
+  wmove(win, 1, 0);
+  wrefresh(win);
   doupdate();
 }
 
-// Function to update the display with the highlighted book
-void update_highlight(WINDOW *win, int highlight, int previous_highlight) {
+void update_highlight(WINDOW *win, int highlight, int prev_highlight) {
   int row;
 
-  // Remove highlight from previous book
-  if (previous_highlight != -1) {
-    row = previous_highlight + 1;
-    print_book(win, row, library[previous_highlight], 0); // No highlight
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
   }
 
-  // Add highlight to current book
-  row = highlight + 1;
-  print_book(win, row, library[highlight], 1); // Highlight current book
+  int id_width, isbn_width, title_width, author_width, copies_width;
+  id_width = 6;
+  isbn_width = 10;
+  copies_width = 6;
+  title_width = 0;
+  author_width = 0;
+  int remaining =
+      COLS - ((id_width + 2) + (isbn_width + 2) + (copies_width + 2));
+  if (remaining < 80) {
+    title_width = remaining;
+  } else {
+    title_width = 80;
+    author_width = getmaxx(win) -
+                   ((id_width + 2) + (isbn_width + 2) + (copies_width + 2) +
+                    (title_width + 2)) +
+                   2;
+  }
 
+  if (prev_highlight != -1) {
+    row = prev_highlight + 1;
+
+    print_book(win, row, library[prev_highlight], 0, id_width, isbn_width,
+               title_width, author_width, copies_width);
+  }
+  // Highlight current book
+  mvwprintw(
+      win, 11, 0,
+      "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",
+      id_width, isbn_width, copies_width, title_width, author_width,
+      getmaxx(win));
+  mvwprintw(win, 12, 168, "He");
+  // Add highlight to current book
+
+  row = highlight + 1;
+  if (row == 0) {
+    row = 1;
+  }
+  print_book(win, row, library[highlight], 1, id_width, isbn_width, title_width,
+             author_width, copies_width);
+  // Highlight current book
   // Refresh the screen efficiently
   wnoutrefresh(win);
   doupdate();
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
 
-  // Initialize ncurses
+  // Initialise ncurses
   initscr();
   noecho();
   cbreak();
-  curs_set(0); // Hide the default cursor
+  curs_set(0);
   start_color();
 
-  // Create a new window covering the entire screen
   WINDOW *table_win = newwin(LINES, COLS, 0, 0);
-  keypad(table_win, TRUE); // Enable arrow keys
+  keypad(table_win, TRUE);
+  display_books(table_win);
+  // int MAX_BOOKS = getmaxy(table_win) - 2;
+  int MAX_BOOKS = 10;
 
-  int highlight = -1;          // Index of the currently highlighted book
-  int previous_highlight = -1; // Track the previously highlighted book
+  int highlight = -1;
+  int prev_highlight = -1;
   int ch;
 
-  // Display all books initially
-  display_books(table_win);
-
-  // Main loop for user input
   while (1) {
-    ch = wgetch(table_win); // Wait for user input
-
-    previous_highlight = highlight;
-
+    ch = wgetch(table_win);
+    prev_highlight = highlight;
     switch (ch) {
     case 'k':
-      if (highlight <= 0) {
-        highlight = MAX_BOOKS - 1;
-      } else {
-        highlight--; // Move cursor up
-      }
-      break;
     case KEY_UP:
-      if (highlight <= 0) {
+      if (highlight == 0) {
         highlight = MAX_BOOKS - 1;
       } else {
-        highlight--; // Move cursor up
+        highlight--;
       }
       break;
     case 'j':
-      if (highlight < MAX_BOOKS - 1) {
-        highlight++; // Move cursor down
-      } else {
-        highlight = 0;
-      }
-      break;
     case KEY_DOWN:
-      if (highlight < MAX_BOOKS - 1) {
-        highlight++; // Move cursor down
-      } else {
+      if (highlight == MAX_BOOKS - 1) {
         highlight = 0;
+      } else {
+        highlight++;
       }
       break;
     case 'q':
     case 'Q':
-      endwin(); // Exit ncurses mode
+      endwin();
       return 0;
     default:
-      if (highlight <= 0) {
-        highlight = previous_highlight;
-      }
+      continue;
     }
-
-    // Update display with new highlight
-    update_highlight(table_win, highlight, previous_highlight);
+    update_highlight(table_win, highlight, prev_highlight);
   }
 
-  // Clean up ncurses
   delwin(table_win);
   endwin();
-  return 0;
+  return EXIT_SUCCESS;
 }

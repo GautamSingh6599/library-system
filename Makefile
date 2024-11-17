@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Werror -lncurses -lpanel -lform -lmenu
-SRC = src/tui.c
+CFLAGS = -Werror -lncurses
+SRC = src/tui.c src/book.c
 # Header files
 INCLUDES = -I include/
 # Output executable

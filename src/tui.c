@@ -4,6 +4,10 @@
 #include "../include/tui.h"
 #include "../include/book.h"
 #include <ncurses.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <wchar.h>
 
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
@@ -78,6 +82,51 @@ void print_book(WINDOW *win, int row, Book book, int highlight, int id_width,
   }
 }
 
+void update_books(WINDOW *win, Book *library, int MAX_BOOKS) {
+  werase(win);
+  wrefresh(win);
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
+  }
+
+  int id_width, isbn_width, title_width, author_width, copies_width;
+  id_width = 6;
+  isbn_width = 10;
+  copies_width = 6;
+  title_width = 0;
+  author_width = 0;
+  int remaining =
+      COLS - ((id_width + 2) + (isbn_width + 2) + (copies_width + 2));
+  if (remaining < 80) {
+    title_width = remaining;
+  } else {
+    title_width = 80;
+    author_width = getmaxx(win) -
+                   ((id_width + 2) + (isbn_width + 2) + (copies_width + 2) +
+                    (title_width + 2)) +
+                   2;
+  }
+
+  print_header(win, id_width, isbn_width, title_width, author_width,
+               copies_width);
+
+  int row = 1;
+  for (int i = 0; i < MAX_BOOKS; i++) {
+    print_book(win, row, library[i], 0, id_width, isbn_width, title_width,
+               author_width, copies_width, library);
+    row++;
+  }
+
+  wmove(win, 1, 0);
+  wrefresh(win);
+  doupdate();
+}
+
 void display_books(WINDOW *win, Book *library, int MAX_BOOKS) {
   int term_cols, term_rows;
   getmaxyx(win, term_rows, term_cols);
@@ -109,12 +158,6 @@ void display_books(WINDOW *win, Book *library, int MAX_BOOKS) {
   print_header(win, id_width, isbn_width, title_width, author_width,
                copies_width);
 
-  /*mvwprintw(*/
-  /*    win, 11, 0,*/
-  /*    "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",*/
-  /*    id_width, isbn_width, copies_width, title_width, author_width,*/
-  /*    getmaxx(win));*/
-  /*for (int i = 0; i < LINES - 2; i++) {*/
   int row = 1;
   for (int i = 0; i < MAX_BOOKS; i++) {
     print_book(win, row, library[i], 0, id_width, isbn_width, title_width,
@@ -170,22 +213,251 @@ void update_highlight(WINDOW *win, int highlight, int prev_highlight,
     print_book(win, row, library[prev_highlight], 0, id_width, isbn_width,
                title_width, author_width, copies_width, library);
   }
-  // Highlight current book
-  /*mvwprintw(*/
-  /*    win, 11, 0,*/
-  /*    "id = %d, isbn = %d, copies = %d, title = %d, author = %d, cols = %d",*/
-  /*    id_width, isbn_width, copies_width, title_width, author_width,*/
-  /*    getmaxx(win));*/
-  /*mvwprintw(win, 12, 168, "He");*/
-  // Add highlight to current book
 
   row = highlight + 1;
   print_book(win, row, library[highlight], 1, id_width, isbn_width, title_width,
              author_width, copies_width, library);
+
   // Highlight current book
   // Refresh the screen efficiently
   wnoutrefresh(win);
   doupdate();
+}
+
+void command_mode(WINDOW *win) {
+  echo();
+  wattron(win, A_REVERSE | A_BOLD);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, ":");
+  wchar_t *cmd = (wchar_t *)malloc((x - 3) * sizeof(wchar_t));
+  mvwscanw(win, y - 1, 2, "%ls", cmd);
+  if (cmd[0] == 'b' && cmd[1] == '/') {
+    int len = wcslen(cmd) - 2;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 2, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "b",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER BOOKS BY: %-*ls", COLS, search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = MAX_BOOKS + row;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        if (row - MAX_BOOKS <= 0) {
+          break;
+        }
+        row = row - MAX_BOOKS;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+  if (cmd[0] == 'a' && cmd[1] == '/') {
+    int len = wcslen(cmd) - 2;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 2, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "a",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = MAX_BOOKS + row;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        if (row - MAX_BOOKS <= 0) {
+          break;
+        }
+        row = row - MAX_BOOKS;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+
+  if ((cmd[0] == 'a' && cmd[1] == 'b') ||
+      (cmd[0] == 'b' && cmd[1] == 'a') && cmd[2] == '/') {
+
+    int len = wcslen(cmd) - 3;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 3, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "ab",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER BOOKS & AUTHORS BY: %-*ls", COLS,
+              search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = MAX_BOOKS + row;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        if (row - MAX_BOOKS <= 0) {
+          break;
+        }
+        row = row - MAX_BOOKS;
+        library = window(row, MAX_BOOKS);
+        display_books(win, library, MAX_BOOKS);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+  wattroff(win, A_REVERSE | A_BOLD);
+  print_footer(win);
+  free(cmd);
 }
 
 int main(int argc, char *argv[]) {
@@ -247,6 +519,14 @@ int main(int argc, char *argv[]) {
       display_books(table_win, library, MAX_BOOKS);
       highlight = -1;
       prev_highlight = -1;
+      break;
+    case ':':
+      command_mode(table_win);
+      int row = 1;
+      Book *library = window(1, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS);
+      int highlight = -1;
+      int prev_highlight = -1;
       break;
     case 'q':
     case 'Q':

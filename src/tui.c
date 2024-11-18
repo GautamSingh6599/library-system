@@ -2,8 +2,8 @@
 #include "../include/accounts.h"
 #include "../include/book.h"
 #include <ncurses.h>
+#include <string.h>
 
-int logged_in = 0;
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
                   int author_width, int copies_width) {
@@ -15,17 +15,19 @@ void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
 }
 
 // Function to print footer
-void print_footer(WINDOW *win, char *user) {
+void print_footer(WINDOW *win, char *user, int logged_in) {
   wattron(win, A_REVERSE | A_BOLD);
   int x, y;
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
-            "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] SCROLLDOWN[j/DOWN] "
-            "SEARCH[:] LOGIN[l]");
+            "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
+            "SCROLLDOWN[j/DOWN]SEARCH[:] LOGIN[l]");
   if (logged_in == 1) {
-    mvwprintw(win, LINES - strlen(user), 0, " [%s] ", user);
+    mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
+    wrefresh(win);
   }
   wattroff(win, A_REVERSE | A_BOLD);
+  wrefresh(win);
 }
 
 // Function to display error message in popup
@@ -125,7 +127,8 @@ void update_books(WINDOW *win, Book *library, int MAX_BOOKS) {
   doupdate();
 }
 
-void display_books(WINDOW *win, Book *library, int MAX_BOOKS) {
+void display_books(WINDOW *win, Book *library, int MAX_BOOKS, char *user,
+                   int logged_in) {
   int term_cols, term_rows;
   getmaxyx(win, term_rows, term_cols);
   if (term_cols < 30 || term_rows < 3) {
@@ -163,7 +166,7 @@ void display_books(WINDOW *win, Book *library, int MAX_BOOKS) {
     row++;
   }
 
-  print_footer(win);
+  print_footer(win, user, logged_in);
 
   wmove(win, 1, 0);
   wrefresh(win);
@@ -222,7 +225,7 @@ void update_highlight(WINDOW *win, int highlight, int prev_highlight,
   doupdate();
 }
 
-void command_mode(WINDOW *win) {
+void command_mode(WINDOW *win, char *user, int logged_in) {
   echo();
   wattron(win, A_REVERSE | A_BOLD);
   int x, y;
@@ -317,7 +320,7 @@ void command_mode(WINDOW *win) {
       case 27:
         return;
       case ':':
-        command_mode(win);
+        command_mode(win, user, logged_in);
         break;
       case 'q':
       case 'Q':
@@ -413,7 +416,7 @@ void command_mode(WINDOW *win) {
       case 27:
         return;
       case ':':
-        command_mode(win);
+        command_mode(win, user, logged_in);
         break;
       case 'q':
       case 'Q':
@@ -514,7 +517,7 @@ void command_mode(WINDOW *win) {
       case 27:
         return;
       case ':':
-        command_mode(win);
+        command_mode(win, user, logged_in);
         break;
       case 'q':
       case 'Q':
@@ -527,11 +530,11 @@ void command_mode(WINDOW *win) {
     free(search_str);
   }
   wattroff(win, A_REVERSE | A_BOLD);
-  print_footer(win);
+  print_footer(win, user, logged_in);
   free(cmd);
 }
 
-void login_tui(WINDOW *win, int logged_in, char *user) {
+void login_tui(WINDOW *win, int *logged_in, char *user, int *user_type) {
   echo();
   wattron(win, A_REVERSE | A_BOLD);
   curs_set(1);
@@ -547,31 +550,32 @@ void login_tui(WINDOW *win, int logged_in, char *user) {
   wattroff(win, A_INVIS);
   wattroff(win, A_REVERSE | A_BOLD);
   curs_set(0);
-  if (login(username, password) == 0) {
+  if (login(username, password, user_type) == 0) {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Login Successful");
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
-    user = username;
-    logged_in = 1;
+    strcpy(user, username);
+    *logged_in = 1;
     sleep(1);
-  } else if (login(username, password) == -1) {
+  } else if (login(username, password, user_type) == -1) {
 
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "User not found.");
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
-    logged_in = 1;
+    *logged_in = 0;
     sleep(1);
   } else {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Incorrect password.");
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
-    logged_in = 1;
+    *logged_in = 0;
     sleep(1);
   }
-  print_footer(win);
+  print_footer(win, user, *logged_in);
+  noecho();
 }
 
 int main(int argc, char *argv[]) {
@@ -585,19 +589,20 @@ int main(int argc, char *argv[]) {
   curs_set(0);
   start_color();
 
+  int highlight = -1;
+  int prev_highlight = -1;
+  int ch;
+  char *user = (char *)malloc(100 * sizeof(char));
+  int user_type;
+  int logged_in = 0;
+
   WINDOW *table_win = newwin(LINES, COLS, 0, 0);
   keypad(table_win, TRUE);
   int MAX_BOOKS = getmaxy(table_win) - 2;
   int row = 1;
   Book *library = window(1, MAX_BOOKS);
-  display_books(table_win, library, MAX_BOOKS);
+  display_books(table_win, library, MAX_BOOKS, user, logged_in);
   // int MAX_BOOKS = getmaxy(table_win) - 2;
-
-  int highlight = -1;
-  int prev_highlight = -1;
-  int ch;
-  char *user = (char *)malloc(100 * sizeof(char));
-
   while (1) {
     ch = wgetch(table_win);
     prev_highlight = highlight;
@@ -621,7 +626,7 @@ int main(int argc, char *argv[]) {
     case 'n':
       row = MAX_BOOKS + row;
       library = window(row, MAX_BOOKS);
-      display_books(table_win, library, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
       highlight = -1;
       prev_highlight = -1;
       break;
@@ -631,18 +636,18 @@ int main(int argc, char *argv[]) {
       }
       row = row - MAX_BOOKS;
       library = window(row, MAX_BOOKS);
-      display_books(table_win, library, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
       highlight = -1;
       prev_highlight = -1;
       break;
     case 'l':
-      login_tui(table_win, logged_in, user);
+      login_tui(table_win, &logged_in, user, &user_type);
       break;
     case ':':
-      command_mode(table_win);
+      command_mode(table_win, user, logged_in);
       int row = 1;
       Book *library = window(1, MAX_BOOKS);
-      display_books(table_win, library, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
       int hioghlight = -1;
       int prev_highlight = -1;
       break;

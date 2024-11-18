@@ -8,6 +8,7 @@
 #ifndef INCLUDE_INCLUDE_ACCOUNTS_H_
 #define INCLUDE_INCLUDE_ACCOUNTS_H_
 
-int login(const char *username, const char *password);
+int signup(const char *username, const char *password, int user_type);
+int login(const char *username, const char *password, int *user_type);
 
 #endif

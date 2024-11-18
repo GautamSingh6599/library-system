@@ -31,7 +31,7 @@ void compute_sha256(const char *input, char *output) {
 }
 
 // Main signup function
-int signup(const char *username, const char *password) {
+int signup(const char *username, const char *password, int user_type) {
     const char *filename = "./data/users.csv";
     char line[MAX_LINE_LENGTH];
     int user_exists = 0;
@@ -79,18 +79,19 @@ int signup(const char *username, const char *password) {
     }
 
     // Append new user data
-    fprintf(file, "%s,%s,%s\n", username, salt, hash);
+    fprintf(file, "%s,%s,%s,%d\n", username, salt, hash, user_type);
     fclose(file);
 
     return 0;
 }
 
 
-int login(const char *username, const char *password) {
+int login(const char *username, const char *password, int *user_type) {
     const char *filename = "./data/users.csv";
     char line[MAX_LINE_LENGTH];
     char file_username[71], salt[SALT_LENGTH + 1], spash[HASH_LENGTH];
     int user_found = 0;
+    int found_user_type = -1;
 
     // Open file for reading
     FILE *file = fopen(filename, "r");
@@ -112,9 +113,13 @@ int login(const char *username, const char *password) {
                 if (token) strncpy(salt, token, SALT_LENGTH);
                 salt[SALT_LENGTH] = '\0';
 
-                token = strtok(NULL, "\n"); // Get spash (hash of the salted password)
+                token = strtok(NULL, ","); // Get spash (hash of the salted password)
                 if (token) strncpy(spash, token, HASH_LENGTH);
                 spash[HASH_LENGTH - 1] = '\0';
+
+                token = strtok(NULL, "\n"); // Get user type
+                if (token) found_user_type = atoi(token);
+
                 break;
             }
         }
@@ -136,6 +141,9 @@ int login(const char *username, const char *password) {
 
     // Compare computed hash with stored hash
     if (strcmp(hash, spash) == 0) {
+        if (user_type != NULL) {
+            *user_type = found_user_type;
+        }
         return 0;
     } else {
         perror("Error: Incorrect password.\n");
@@ -154,8 +162,14 @@ int main() {
     printf("Enter password: ");
     scanf("%70s", password);
 
-    // signup(username, password);
-    login(username, password);
+    // int sneed;
+    // printf("Enter type: ");
+    // scanf("%d", &sneed);  
+    // signup(username, password, sneed);
+
+    int sneed = 34;
+    login(username, password, &sneed);
+    printf("\n%d\n", sneed);
 
     return 0;
 }

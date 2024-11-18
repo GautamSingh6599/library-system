@@ -26,7 +26,7 @@ void print_footer(WINDOW *win) {
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] SCROLLDOWN[j/DOWN] "
-            "SEARCH[/] LOGIN[l]");
+            "SEARCH[:] LOGIN[l]");
   wattroff(win, A_REVERSE | A_BOLD);
 }
 
@@ -229,9 +229,11 @@ void command_mode(WINDOW *win) {
   wattron(win, A_REVERSE | A_BOLD);
   int x, y;
   getmaxyx(stdscr, y, x);
+  curs_set(1);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2, ":");
   wchar_t *cmd = (wchar_t *)malloc((x - 3) * sizeof(wchar_t));
   mvwscanw(win, y - 1, 2, "%ls", cmd);
+  curs_set(0);
   if (cmd[0] == 'b' && cmd[1] == '/') {
     int len = wcslen(cmd) - 2;
     wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
@@ -531,6 +533,25 @@ void command_mode(WINDOW *win) {
   free(cmd);
 }
 
+void login(WINDOW *win) {
+  echo();
+  wattron(win, A_REVERSE | A_BOLD);
+  curs_set(1);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Username: ");
+  char *username = (char *)malloc((x - 3) * sizeof(char));
+  mvwscanw(win, y - 1, 10, "%s", username);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Password: ");
+  char *password = (char *)malloc((x - 3) * sizeof(char));
+  wattron(win, A_INVIS);
+  mvwscanw(win, y - 1, 10, "%s", password);
+  wattroff(win, A_INVIS);
+  wattroff(win, A_REVERSE | A_BOLD);
+  curs_set(0);
+  print_footer(win);
+}
+
 int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
@@ -591,12 +612,15 @@ int main(int argc, char *argv[]) {
       highlight = -1;
       prev_highlight = -1;
       break;
+    case 'l':
+      login(table_win);
+      break;
     case ':':
       command_mode(table_win);
       int row = 1;
       Book *library = window(1, MAX_BOOKS);
       display_books(table_win, library, MAX_BOOKS);
-      int highlight = -1;
+      int hioghlight = -1;
       int prev_highlight = -1;
       break;
     case 'q':

@@ -1,10 +1,4 @@
-// Copyright
-// Gautam Singh
-
 #include "../include/book.h"
-#include <locale.h>
-#include <stdio.h>
-#include <string.h>
 
 // Function to read a CSV file from line a to line b and store in an array of
 // structs

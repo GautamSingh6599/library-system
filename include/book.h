@@ -1,6 +1,7 @@
 // Copyright [2024]
 // Gautam Singh
 #include <locale.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>

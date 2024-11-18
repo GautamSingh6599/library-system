@@ -1,14 +1,9 @@
-// Copyright [2024]
-// Gautam Singh
-
 #include "../include/tui.h"
+#include "../include/accounts.h"
 #include "../include/book.h"
 #include <ncurses.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <wchar.h>
 
+int logged_in = 0;
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
                   int author_width, int copies_width) {
@@ -20,13 +15,16 @@ void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
 }
 
 // Function to print footer
-void print_footer(WINDOW *win) {
+void print_footer(WINDOW *win, char *user) {
   wattron(win, A_REVERSE | A_BOLD);
   int x, y;
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] SCROLLDOWN[j/DOWN] "
             "SEARCH[:] LOGIN[l]");
+  if (logged_in == 1) {
+    mvwprintw(win, LINES - strlen(user), 0, " [%s] ", user);
+  }
   wattroff(win, A_REVERSE | A_BOLD);
 }
 
@@ -533,7 +531,7 @@ void command_mode(WINDOW *win) {
   free(cmd);
 }
 
-void login(WINDOW *win) {
+void login_tui(WINDOW *win, int logged_in, char *user) {
   echo();
   wattron(win, A_REVERSE | A_BOLD);
   curs_set(1);
@@ -549,6 +547,30 @@ void login(WINDOW *win) {
   wattroff(win, A_INVIS);
   wattroff(win, A_REVERSE | A_BOLD);
   curs_set(0);
+  if (login(username, password) == 0) {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Login Successful");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    user = username;
+    logged_in = 1;
+    sleep(1);
+  } else if (login(username, password) == -1) {
+
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "User not found.");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    logged_in = 1;
+    sleep(1);
+  } else {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Incorrect password.");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    logged_in = 1;
+    sleep(1);
+  }
   print_footer(win);
 }
 
@@ -574,6 +596,7 @@ int main(int argc, char *argv[]) {
   int highlight = -1;
   int prev_highlight = -1;
   int ch;
+  char *user = (char *)malloc(100 * sizeof(char));
 
   while (1) {
     ch = wgetch(table_win);
@@ -613,7 +636,7 @@ int main(int argc, char *argv[]) {
       prev_highlight = -1;
       break;
     case 'l':
-      login(table_win);
+      login_tui(table_win, logged_in, user);
       break;
     case ':':
       command_mode(table_win);

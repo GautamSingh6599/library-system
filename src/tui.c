@@ -252,6 +252,9 @@ void command_mode(WINDOW *win) {
     int prev_highlight = -1;
     int ch;
 
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
     noecho();
     while (1) {
       ch = wgetch(win);
@@ -274,19 +277,40 @@ void command_mode(WINDOW *win) {
         }
         break;
       case 'n':
-        row = MAX_BOOKS + row;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "b", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;
       case 'N':
-        if (row - MAX_BOOKS <= 0) {
-          break;
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
         }
-        row = row - MAX_BOOKS;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "b", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;
@@ -324,7 +348,9 @@ void command_mode(WINDOW *win) {
     int highlight = -1;
     int prev_highlight = -1;
     int ch;
-
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
     noecho();
     while (1) {
       ch = wgetch(win);
@@ -347,19 +373,40 @@ void command_mode(WINDOW *win) {
         }
         break;
       case 'n':
-        row = MAX_BOOKS + row;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "a", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;
       case 'N':
-        if (row - MAX_BOOKS <= 0) {
-          break;
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
         }
-        row = row - MAX_BOOKS;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "a", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;
@@ -402,6 +449,9 @@ void command_mode(WINDOW *win) {
     int prev_highlight = -1;
     int ch;
 
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
     noecho();
     while (1) {
       ch = wgetch(win);
@@ -424,19 +474,40 @@ void command_mode(WINDOW *win) {
         }
         break;
       case 'n':
-        row = MAX_BOOKS + row;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "ab", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;
       case 'N':
-        if (row - MAX_BOOKS <= 0) {
-          break;
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
         }
-        row = row - MAX_BOOKS;
-        library = window(row, MAX_BOOKS);
-        display_books(win, library, MAX_BOOKS);
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "ab", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
         highlight = -1;
         prev_highlight = -1;
         break;

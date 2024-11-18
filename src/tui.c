@@ -3,6 +3,7 @@
 #include "../include/book.h"
 #include <ncurses.h>
 #include <string.h>
+#include <unistd.h>
 
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
@@ -21,7 +22,7 @@ void print_footer(WINDOW *win, char *user, int logged_in) {
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
-            "SCROLLDOWN[j/DOWN]SEARCH[:] LOGIN[l]");
+            "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] ADD_USER[A] LOGOUT[X]");
   if (logged_in == 1) {
     mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
     wrefresh(win);
@@ -578,6 +579,40 @@ void login_tui(WINDOW *win, int *logged_in, char *user, int *user_type) {
   noecho();
 }
 
+void log_out(WINDOW *win, char *user, int *logged_in, int *user_type) {
+  strcpy(user, "");
+  *logged_in = 0;
+  print_footer(win, user, *logged_in);
+}
+
+void signup_tui(WINDOW *win, char *user, int *logged_in, int *user_type) {
+  echo();
+  wattron(win, A_REVERSE | A_BOLD);
+  curs_set(1);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "New Username: ");
+  char *username = (char *)malloc((x - 3) * sizeof(char));
+  mvwscanw(win, y - 1, 14, "%s", username);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "New Password: ");
+  char *password = (char *)malloc((x - 3) * sizeof(char));
+  wattron(win, A_INVIS);
+  mvwscanw(win, y - 1, 14, "%s", password);
+  wattroff(win, A_INVIS);
+  curs_set(0);
+  wattron(win, A_REVERSE | A_BOLD);
+  if (signup(username, password, *user_type) == 0) {
+    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "New user added.");
+  } else {
+    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Username already there.");
+  }
+  wattroff(win, A_REVERSE | A_BOLD);
+  wrefresh(win);
+  sleep(1);
+  print_footer(win, user, *logged_in);
+  noecho();
+}
+
 int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
@@ -642,6 +677,12 @@ int main(int argc, char *argv[]) {
       break;
     case 'l':
       login_tui(table_win, &logged_in, user, &user_type);
+      break;
+    case 'A':
+      signup_tui(table_win, user, &logged_in, &user_type);
+      break;
+    case 'X':
+      log_out(table_win, user, &logged_in, &user_type);
       break;
     case ':':
       command_mode(table_win, user, logged_in);

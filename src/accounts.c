@@ -56,7 +56,7 @@ int signup(const char *username, const char *password, int user_type) {
   fclose(file);
 
   if (user_exists) {
-    perror("Username already exists.");
+    /*perror("Username already exists.");*/
     return -1;
   }
 
@@ -74,13 +74,9 @@ int signup(const char *username, const char *password, int user_type) {
   // Open file for appending
   file = fopen(filename, "a");
   if (file == NULL) {
-    perror("Error opening the users database");
+    /*perror("Error opening the users database");*/
     return -1;
   }
-
-  // Append new user data
-  fprintf(file, "%s,%s,%s\n", username, salt, hash);
-  fclose(file);
 
   // Append new user data
   fprintf(file, "%s,%s,%s,%d\n", username, salt, hash, user_type);
@@ -147,7 +143,7 @@ int login(const char *username, const char *password, int *user_type) {
     }
     return 0;
   } else {
-    perror("Error: Incorrect password.\n");
+    /*perror("Error: Incorrect password.\n");*/
     return -2;
   }
 }

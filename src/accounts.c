@@ -148,25 +148,23 @@ int login(const char *username, const char *password, int *user_type) {
   }
 }
 
-/*
 int main() {
 
-    char username[71], password[71];
+  char username[71], password[71];
 
-    printf("Enter username: ");
-    scanf("%70s", username);
-    printf("Enter password: ");
-    scanf("%70s", password);
+  printf("Enter username: ");
+  scanf("%70s", username);
+  printf("Enter password: ");
+  scanf("%70s", password);
 
-    // int sneed;
-    // printf("Enter type: ");
-    // scanf("%d", &sneed);
-    // signup(username, password, sneed);
+  // int sneed;
+  // printf("Enter type: ");
+  // scanf("%d", &sneed);
+  // signup(username, password, sneed);
 
-    int sneed = 34;
-    login(username, password, &sneed);
-    printf("\n%d\n", sneed);
+  int sneed = 34;
+  login(username, password, &sneed);
+  printf("\n%d\n", sneed);
 
-    return 0;
+  return 0;
 }
-*/

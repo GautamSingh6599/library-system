@@ -1,7 +1,7 @@
 CC = gcc
 N_FLAGS = -lncurses -lssl -lcrypto
 CFLAGS = -Werror -g
-SRC = src/tui.c src/book.c src/accounts.c
+SRC = src/tui.c src/book.c src/accounts.c src/issuing.c
 # Header files
 INCLUDES = -I include/
 # Output executable

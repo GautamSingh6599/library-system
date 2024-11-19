@@ -10,7 +10,7 @@
 #ifndef INCLUDE_INCLUDE_BOOK_H_
 #define INCLUDE_INCLUDE_BOOK_H_
 
-#define MAX_LINE_LENGTH 1024
+#define MAX_LINE_LENGTH 1050
 
 typedef struct {
   long long id;

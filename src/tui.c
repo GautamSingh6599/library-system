@@ -1,7 +1,9 @@
 #include "../include/tui.h"
 #include "../include/accounts.h"
 #include "../include/book.h"
+#include "../include/issuing.h"
 #include <ncurses.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -22,7 +24,8 @@ void print_footer(WINDOW *win, char *user, int logged_in) {
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
-            "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] ADD_USER[A] LOGOUT[X]");
+            "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] SIGNUP[A] LOGOUT[X] "
+            "ISSUE[i] RETURN[r]");
   if (logged_in == 1) {
     mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
     wrefresh(win);
@@ -613,6 +616,42 @@ void signup_tui(WINDOW *win, char *user, int *logged_in, int *user_type) {
   noecho();
 }
 
+void issue_tui(Book book, char *username, int user_type, WINDOW *win,
+               int logged_in) {
+  char str[11];
+  sprintf(str, "%010lld", book.isbn);
+  int status = issuebook(username, user_type, str);
+  if (status == 0) {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, LINES - 1, 0, " Book: %ls issued successfully %-*s ",
+              book.title, COLS, " ");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    sleep(1);
+  } else if (status == -2) {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, LINES - 1, 0, " Book: %ls already issued to user %-*s ",
+              book.title, COLS, " ");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    sleep(1);
+  } else if (status == -5) {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, LINES - 1, 0, " %-*s ", COLS, "Insufficient copies present");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    sleep(1);
+  } else {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, LINES - 1, 0, " ERROR CODE: %d for isbn %-*s ", status, COLS,
+              str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    sleep(1);
+  }
+  print_footer(win, username, logged_in);
+}
+
 int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
@@ -675,6 +714,22 @@ int main(int argc, char *argv[]) {
       highlight = -1;
       prev_highlight = -1;
       break;
+    case 'i':
+      if (logged_in == 0) {
+        wattron(table_win, A_REVERSE | A_BOLD);
+        mvwprintw(table_win, LINES - 1, 0, " %-*s ", COLS - 2, "Not Logged In");
+        wattroff(table_win, A_REVERSE | A_BOLD);
+        wrefresh(table_win);
+        sleep(1);
+        continue;
+      } else if (highlight != -1) {
+        issue_tui(library[highlight], user, user_type, table_win, logged_in);
+        print_footer(table_win, user, logged_in);
+        library = window(row, MAX_BOOKS);
+        display_books(table_win, library, MAX_BOOKS, user, logged_in);
+        update_highlight(table_win, highlight, prev_highlight, library);
+      }
+      break;
     case 'l':
       login_tui(table_win, &logged_in, user, &user_type);
       break;
@@ -686,11 +741,11 @@ int main(int argc, char *argv[]) {
       break;
     case ':':
       command_mode(table_win, user, logged_in);
-      int row = 1;
+      row = 1;
       Book *library = window(1, MAX_BOOKS);
       display_books(table_win, library, MAX_BOOKS, user, logged_in);
-      int hioghlight = -1;
-      int prev_highlight = -1;
+      highlight = -1;
+      prev_highlight = -1;
       break;
     case 'q':
     case 'Q':

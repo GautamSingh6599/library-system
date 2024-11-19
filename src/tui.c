@@ -686,6 +686,9 @@ void signup_tui(WINDOW *win, char *user, int *logged_in, int *user_type) {
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "New Username: ");
   char *username = (char *)malloc((x - 3) * sizeof(char));
   mvwscanw(win, y - 1, 14, "%s", username);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
+            "Type of user (0: student; 1: faculty; 2: Admin): ");
+  mvwscanw(win, y - 1, 51, "%1d", user_type);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "New Password: ");
   char *password = (char *)malloc((x - 3) * sizeof(char));
   wattron(win, A_INVIS);

@@ -2,6 +2,7 @@
 #include "../include/accounts.h"
 #include "../include/book.h"
 #include "../include/issuing.h"
+#include <math.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +18,13 @@ void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
   wattroff(win, A_REVERSE | A_BOLD);
 }
 
+void print_issued_header(WINDOW *win, int isbn_width, int date_width) {
+  wattron(win, A_REVERSE | A_BOLD);
+  mvwprintw(win, 0, 0, " %-*s %-*s ", isbn_width, "ISBN", date_width,
+            "Due Date");
+  wattroff(win, A_REVERSE | A_BOLD);
+}
+
 // Function to print footer
 void print_footer(WINDOW *win, char *user, int logged_in) {
   wattron(win, A_REVERSE | A_BOLD);
@@ -25,7 +33,7 @@ void print_footer(WINDOW *win, char *user, int logged_in) {
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
             "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] SIGNUP[A] LOGOUT[X] "
-            "ISSUE[i] RETURN[r]");
+            "ISSUE[i] RETURN[r] LIST[Y]");
   if (logged_in == 1) {
     mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
     wrefresh(win);
@@ -84,6 +92,87 @@ void print_book(WINDOW *win, int row, Book book, int highlight, int id_width,
   if (highlight) {
     wattroff(win, A_STANDOUT);
   }
+}
+
+void print_issued_book(WINDOW *win, int row, IssuedBook book, int highlight,
+                       int isbn_width, int date_width, IssuedBook *library) {
+  if (highlight) {
+    wattron(win, A_STANDOUT);
+  }
+  mvwprintw(win, row, 0, " %-*s %-*s ", isbn_width, book.isbn, date_width,
+            book.date);
+  if (highlight) {
+    wattroff(win, A_STANDOUT);
+  }
+}
+
+void display_issued_books(WINDOW *win, IssuedBook *library, int MAX_BOOKS,
+                          char *user, int logged_in) {
+  werase(win);
+  wrefresh(win);
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
+  }
+
+  int isbn_width, date_width;
+  isbn_width = 20;
+  date_width = COLS - 23;
+  print_issued_header(win, isbn_width, date_width);
+
+  int row = 1;
+  for (int i = 0; i < MAX_BOOKS; i++) {
+    print_issued_book(win, row, library[i], 0, isbn_width, date_width, library);
+    row++;
+  }
+
+  print_footer(win, user, logged_in);
+
+  wmove(win, 1, 0);
+  wrefresh(win);
+  doupdate();
+}
+
+void update_issued_highlight(WINDOW *win, int highlight, int prev_highlight,
+                             IssuedBook *library) {
+  int row;
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
+  }
+
+  int isbn_width, date_width;
+  isbn_width = 20;
+  date_width = COLS - 23;
+  print_issued_header(win, isbn_width, date_width);
+
+  if (highlight == -1 && prev_highlight == -1) {
+    return;
+  }
+
+  if (prev_highlight != -1) {
+    row = prev_highlight + 1;
+
+    print_issued_book(win, row, library[prev_highlight], 0, isbn_width,
+                      date_width, library);
+  }
+
+  row = highlight + 1;
+  print_issued_book(win, row, library[highlight], 1, isbn_width, date_width,
+                    library);
+
+  // Highlight current book
+  // Refresh the screen efficiently
+  wnoutrefresh(win);
+  doupdate();
 }
 
 void update_books(WINDOW *win, Book *library, int MAX_BOOKS) {
@@ -621,7 +710,9 @@ void issue_tui(Book book, char *username, int user_type, WINDOW *win,
   char str[11];
   sprintf(str, "%010lld", book.isbn);
   int status = issuebook(username, user_type, str);
-  if (status == 0) {
+  int num_issued_books;
+  issuedbyuser(username, &num_issued_books);
+  if (status == 0 && num_issued_books < 5) {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, LINES - 1, 0, " Book: %ls issued successfully %-*s ",
               book.title, COLS, " ");
@@ -638,6 +729,13 @@ void issue_tui(Book book, char *username, int user_type, WINDOW *win,
   } else if (status == -5) {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, LINES - 1, 0, " %-*s ", COLS, "Insufficient copies present");
+    wattroff(win, A_REVERSE | A_BOLD);
+    wrefresh(win);
+    sleep(1);
+  } else if (num_issued_books == 5) {
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, LINES - 1, 0, " %-*s ", COLS,
+              "Cannot issue more than 5 books");
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
     sleep(1);
@@ -746,6 +844,83 @@ int main(int argc, char *argv[]) {
       display_books(table_win, library, MAX_BOOKS, user, logged_in);
       highlight = -1;
       prev_highlight = -1;
+      break;
+    case 'Y':
+      if (logged_in == 0) {
+        wattron(table_win, A_REVERSE | A_BOLD);
+        mvwprintw(table_win, LINES - 1, 0, " %-*s ", COLS - 2, "Not Logged In");
+        wattroff(table_win, A_REVERSE | A_BOLD);
+        wrefresh(table_win);
+        sleep(1);
+        continue;
+      } else {
+        int iss_highlight = -1;
+        int iss_prev_highlight = -1;
+        int status_issue;
+        int c;
+        IssuedBook *library_issued;
+        int num_issued_books;
+        library_issued = issuedbyuser(user, &num_issued_books);
+        if (num_issued_books == 0) {
+
+          wattron(table_win, A_REVERSE | A_BOLD);
+          mvwprintw(table_win, LINES - 1, 0, " %-*s ", COLS - 2,
+                    "No Books issued");
+          wattroff(table_win, A_REVERSE | A_BOLD);
+          wrefresh(table_win);
+          sleep(1);
+          continue;
+        } else {
+          display_issued_books(table_win, library_issued, num_issued_books,
+                               user, logged_in);
+          while (1) {
+            if (num_issued_books == 0) {
+              break;
+            }
+            c = wgetch(table_win);
+            iss_prev_highlight = iss_highlight;
+            if (c == 27) {
+              break;
+            }
+            switch (c) {
+            case 'k':
+            case KEY_UP:
+              if (iss_highlight <= 0) {
+                iss_highlight = num_issued_books - 1;
+              } else {
+                iss_highlight--;
+              }
+              break;
+            case 'j':
+            case KEY_DOWN:
+              if (iss_highlight == num_issued_books - 1) {
+                iss_highlight = 0;
+              } else {
+                iss_highlight++;
+              }
+              break;
+            case 'r':
+              status_issue =
+                  returnbook(user, library_issued[iss_highlight].isbn);
+              if (status_issue == 0) {
+
+                library_issued = issuedbyuser(user, &num_issued_books);
+                display_issued_books(table_win, library_issued,
+                                     num_issued_books, user, logged_in);
+                iss_highlight = -1;
+                iss_prev_highlight = -1;
+              }
+
+            default:
+              continue;
+            }
+            update_issued_highlight(table_win, iss_highlight,
+                                    iss_prev_highlight, library_issued);
+          }
+        }
+      }
+      library = window(row, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
       break;
     case 'q':
     case 'Q':

@@ -1,6 +1,3 @@
-// Copyright [2024]
-// Gautam Singh
-
 #include "./book.h"
 #include <locale.h>
 #include <ncurses.h>

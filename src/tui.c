@@ -2,9 +2,11 @@
 #include "../include/accounts.h"
 #include "../include/book.h"
 #include "../include/bookrecords.h"
+#include "../include/chatbot.h"
 #include "../include/issuing.h"
 #include <ncurses.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -31,7 +33,7 @@ void print_footer(WINDOW *win, char *user, int logged_in) {
   int x, y;
   getmaxyx(stdscr, y, x);
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
-            "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
+            "CHAT[?] EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
             "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] SIGNUP[A] LOGOUT[X] "
             "ISSUE[i] RETURN[r] LIST[Y] ADMIN_MODE[a]");
   if (logged_in == 1) {
@@ -1443,6 +1445,28 @@ void admin_mode(char *x, char *user, int user_type) {
   }
 }
 
+void chat(WINDOW *win, char *user) {
+  wattron(win, A_REVERSE | A_BOLD);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, " Please query the chat bot. ");
+  wrefresh(win);
+  sleep(1);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "  ");
+  char *query = (char *)malloc((MAX_STRINGS * sizeof(char)));
+  echo();
+  curs_set(1);
+  mvwgetnstr(win, y - 1, 1, query, MAX_STRINGS - 1);
+  sleep(1);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "  ");
+  const char *answer = (char *)malloc((MAX_STRINGS * sizeof(char)));
+  answer = find_answer(query, knowledge_base);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, answer);
+  wrefresh(win);
+  sleep(2);
+  wattroff(win, A_REVERSE | A_BOLD);
+}
+
 int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
@@ -1525,6 +1549,13 @@ int main(int argc, char *argv[]) {
       break;
     case 'l':
       login_tui(table_win, &logged_in, user, &user_type);
+      break;
+    case '?':
+      chat(table_win, user);
+      print_footer(table_win, user, logged_in);
+      library = window(row, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
+      update_highlight(table_win, highlight, prev_highlight, library);
       break;
     case 'a':
       if (logged_in == 0) {

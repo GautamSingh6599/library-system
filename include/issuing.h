@@ -14,4 +14,5 @@ typedef struct {
 
 void get_current_date(char *date_str, size_t max_len);
 IssuedBook *issuedbyuser(const char *username, int *count);
+int returnbook(const char *username, const char *returnisbn);
 int issuebook(const char *username, int user_type, const char *targetisbn);

@@ -2,7 +2,6 @@
 #include "../include/accounts.h"
 #include "../include/book.h"
 #include "../include/issuing.h"
-#include <math.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,7 +32,22 @@ void print_footer(WINDOW *win, char *user, int logged_in) {
   mvwprintw(win, y - 1, 0, " %-*s ", x - 2,
             "EXIT[q] NEXTPAGE[n] PREVPAGE[N] SCROLLUP[k/UP] "
             "SCROLLDOWN[j/DOWN] SEARCH[:] LOGIN[l] SIGNUP[A] LOGOUT[X] "
-            "ISSUE[i] RETURN[r] LIST[Y]");
+            "ISSUE[i] RETURN[r] LIST[Y] ADMIN_MODE[a]");
+  if (logged_in == 1) {
+    mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
+    wrefresh(win);
+  }
+  wattroff(win, A_REVERSE | A_BOLD);
+  wrefresh(win);
+}
+
+void admin_print_footer(WINDOW *win, char *user, int logged_in) {
+  wattron(win, A_REVERSE | A_BOLD);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  mvwprintw(
+      win, y - 1, 0, " %-*s ", x - 2,
+      "[ADMIN MODE] ADD_BOOK[A] REMOVE_BOOK[R] EDIT_BOOK[E] SEARCH[:] EXIT[X]");
   if (logged_in == 1) {
     mvwprintw(win, LINES - 1, COLS - 4 - strlen(user), " [%s] ", user);
     wrefresh(win);
@@ -260,6 +274,52 @@ void display_books(WINDOW *win, Book *library, int MAX_BOOKS, char *user,
   }
 
   print_footer(win, user, logged_in);
+
+  wmove(win, 1, 0);
+  wrefresh(win);
+  doupdate();
+}
+
+void display_books_admin(WINDOW *win, Book *library, int MAX_BOOKS, char *user,
+                         int logged_in) {
+  int term_cols, term_rows;
+  getmaxyx(win, term_rows, term_cols);
+  if (term_cols < 30 || term_rows < 3) {
+    char *msg;
+    asprintf(&msg, "Size of the terminal too small. x = %d, y = %d", term_cols,
+             term_rows);
+    show_error_message(stdscr, msg);
+  }
+
+  int id_width, isbn_width, title_width, author_width, copies_width;
+  id_width = 6;
+  isbn_width = 10;
+  copies_width = 6;
+  title_width = 0;
+  author_width = 0;
+  int remaining =
+      COLS - ((id_width + 2) + (isbn_width + 2) + (copies_width + 2));
+  if (remaining < 80) {
+    title_width = remaining;
+  } else {
+    title_width = 80;
+    author_width = getmaxx(win) -
+                   ((id_width + 2) + (isbn_width + 2) + (copies_width + 2) +
+                    (title_width + 2)) +
+                   2;
+  }
+
+  print_header(win, id_width, isbn_width, title_width, author_width,
+               copies_width);
+
+  int row = 1;
+  for (int i = 0; i < MAX_BOOKS; i++) {
+    print_book(win, row, library[i], 0, id_width, isbn_width, title_width,
+               author_width, copies_width, library);
+    row++;
+  }
+
+  admin_print_footer(win, user, logged_in);
 
   wmove(win, 1, 0);
   wrefresh(win);
@@ -627,7 +687,316 @@ void command_mode(WINDOW *win, char *user, int logged_in) {
   free(cmd);
 }
 
-void login_tui(WINDOW *win, int *logged_in, char *user, int *user_type) {
+void command_mode_admin(WINDOW *win, char *user, int logged_in) {
+  echo();
+  wattron(win, A_REVERSE | A_BOLD);
+  int x, y;
+  getmaxyx(stdscr, y, x);
+  curs_set(1);
+  mvwprintw(win, y - 1, 0, " %-*s ", x - 2, ":");
+  wchar_t *cmd = (wchar_t *)malloc((x - 3) * sizeof(wchar_t));
+  mvwscanw(win, y - 1, 2, "%ls", cmd);
+  curs_set(0);
+  if (cmd[0] == 'b' && cmd[1] == '/') {
+    int len = wcslen(cmd) - 2;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 2, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "b",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER BOOKS BY: %-*ls", COLS, search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "b", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
+        }
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "b", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win, user, logged_in);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+  if (cmd[0] == 'a' && cmd[1] == '/') {
+    int len = wcslen(cmd) - 2;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 2, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "a",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "a", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
+        }
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "a", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win, user, logged_in);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+
+  if ((cmd[0] == 'a' && cmd[1] == 'b') ||
+      (cmd[0] == 'b' && cmd[1] == 'a') && cmd[2] == '/') {
+
+    int len = wcslen(cmd) - 3;
+    wchar_t *search_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+    wcsncpy(search_str, cmd + 3, len);
+    search_str[len] = '\0';
+    int row = 1;
+    int MAX_BOOKS = getmaxy(win) - 2;
+    int num_books_found = 0;
+    Book *library = filter_books("./data/books.csv", search_str, row, "ab",
+                                 MAX_BOOKS, &num_books_found);
+    update_books(win, library, num_books_found);
+    wattron(win, A_REVERSE | A_BOLD);
+    mvwprintw(win, y - 1, 0, "FILTER BOOKS & AUTHORS BY: %-*ls", COLS,
+              search_str);
+    wattroff(win, A_REVERSE | A_BOLD);
+    wnoutrefresh(win);
+    doupdate();
+    int highlight = -1;
+    int prev_highlight = -1;
+    int ch;
+
+    int page_no = 1;
+    long long *pagination = (long long *)malloc(page_no * sizeof(long long));
+    pagination[0] = 1;
+    noecho();
+    while (1) {
+      ch = wgetch(win);
+      prev_highlight = highlight;
+      switch (ch) {
+      case 'k':
+      case KEY_UP:
+        if (highlight <= 0) {
+          highlight = num_books_found - 1;
+        } else {
+          highlight--;
+        }
+        break;
+      case 'j':
+      case KEY_DOWN:
+        if (highlight == num_books_found - 1) {
+          highlight = 0;
+        } else {
+          highlight++;
+        }
+        break;
+      case 'n':
+        row = library[num_books_found - 1].id + 1;
+        Book *lib_update = filter_books("./data/books.csv", search_str, row,
+                                        "ab", MAX_BOOKS, &num_books_found);
+        if (lib_update == NULL) {
+          row = pagination[page_no - 1];
+          continue;
+        }
+        page_no++;
+        pagination = (long long *)realloc(pagination, page_no * sizeof(long));
+        pagination[page_no - 1] = row;
+        update_books(win, lib_update, num_books_found);
+        library = lib_update;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 'N':
+        page_no--;
+        if (page_no == 0) {
+          page_no = 1;
+        }
+        row = pagination[page_no - 1];
+        Book *lib_update_1 = filter_books("./data/books.csv", search_str, row,
+                                          "ab", MAX_BOOKS, &num_books_found);
+        if (lib_update_1 == NULL) {
+          continue;
+        }
+        update_books(win, lib_update_1, num_books_found);
+        library = lib_update_1;
+        wattron(win, A_REVERSE | A_BOLD);
+        mvwprintw(win, y - 1, 0, "FILTER AUTHORS BY: %-*ls", COLS, search_str);
+        wattroff(win, A_REVERSE | A_BOLD);
+        highlight = -1;
+        prev_highlight = -1;
+        break;
+      case 27:
+        return;
+      case ':':
+        command_mode(win, user, logged_in);
+        break;
+      case 'q':
+      case 'Q':
+        endwin();
+      default:
+        continue;
+      }
+      update_highlight(win, highlight, prev_highlight, library);
+    }
+    free(search_str);
+  }
+  wattroff(win, A_REVERSE | A_BOLD);
+  print_footer(win, user, logged_in);
+  free(cmd);
+}
+
+void login_tui(WINDOW *win, int *logged_in, char *user, int user_type) {
   echo();
   wattron(win, A_REVERSE | A_BOLD);
   curs_set(1);
@@ -643,15 +1012,16 @@ void login_tui(WINDOW *win, int *logged_in, char *user, int *user_type) {
   wattroff(win, A_INVIS);
   wattroff(win, A_REVERSE | A_BOLD);
   curs_set(0);
-  if (login(username, password, user_type) == 0) {
+  if (login(username, password, &user_type) == 0) {
     wattron(win, A_REVERSE | A_BOLD);
-    mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Login Successful");
+    /*mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "Login Successful");*/
+    mvwprintw(win, y - 1, 0, " Login Successful : %d ", user_type);
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
     strcpy(user, username);
     *logged_in = 1;
     sleep(1);
-  } else if (login(username, password, user_type) == -1) {
+  } else if (login(username, password, &user_type) == -1) {
 
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, y - 1, 0, " %-*s ", x - 2, "User not found.");
@@ -753,6 +1123,82 @@ void issue_tui(Book book, char *username, int user_type, WINDOW *win,
   print_footer(win, username, logged_in);
 }
 
+void admin_mode(char *x) {
+  if (*x != 'a') {
+    *x = 'b';
+    return;
+  }
+  int highlight = -1;
+  int prev_highlight = -1;
+  int ch;
+  char *user = (char *)malloc(100 * sizeof(char));
+  int user_type;
+  int logged_in = 0;
+
+  WINDOW *table_win = newwin(LINES, COLS, 0, 0);
+  keypad(table_win, TRUE);
+  int MAX_BOOKS = getmaxy(table_win) - 2;
+  int row = 1;
+  Book *library = window(1, MAX_BOOKS);
+  display_books_admin(table_win, library, MAX_BOOKS, user, logged_in);
+  // int MAX_BOOKS = getmaxy(table_win) - 2;
+  char admin = 'b';
+  while (1 && *x == 'a') {
+    ch = wgetch(table_win);
+    prev_highlight = highlight;
+    switch (ch) {
+    case 'k':
+    case KEY_UP:
+      if (highlight <= 0) {
+        highlight = MAX_BOOKS - 1;
+      } else {
+        highlight--;
+      }
+      break;
+    case 'j':
+    case KEY_DOWN:
+      if (highlight == MAX_BOOKS - 1) {
+        highlight = 0;
+      } else {
+        highlight++;
+      }
+      break;
+    case 'n':
+      row = MAX_BOOKS + row;
+      library = window(row, MAX_BOOKS);
+      display_books_admin(table_win, library, MAX_BOOKS, user, logged_in);
+      highlight = -1;
+      prev_highlight = -1;
+      break;
+    case 'N':
+      if (row - MAX_BOOKS <= 0) {
+        break;
+      }
+      row = row - MAX_BOOKS;
+      library = window(row, MAX_BOOKS);
+      display_books_admin(table_win, library, MAX_BOOKS, user, logged_in);
+      highlight = -1;
+      prev_highlight = -1;
+      break;
+    case 'X':
+      *x = 'b';
+      return;
+      break;
+    case ':':
+      command_mode_admin(table_win, user, logged_in);
+      row = 1;
+      Book *library = window(1, MAX_BOOKS);
+      display_books_admin(table_win, library, MAX_BOOKS, user, logged_in);
+      highlight = -1;
+      prev_highlight = -1;
+      break;
+    default:
+      continue;
+    }
+    update_highlight(table_win, highlight, prev_highlight, library);
+  }
+}
+
 int main(int argc, char *argv[]) {
   // Set locale to support wide characters
   setlocale(LC_ALL, "");
@@ -778,6 +1224,7 @@ int main(int argc, char *argv[]) {
   Book *library = window(1, MAX_BOOKS);
   display_books(table_win, library, MAX_BOOKS, user, logged_in);
   // int MAX_BOOKS = getmaxy(table_win) - 2;
+  char admin = 'b';
   while (1) {
     ch = wgetch(table_win);
     prev_highlight = highlight;
@@ -822,6 +1269,7 @@ int main(int argc, char *argv[]) {
         wattroff(table_win, A_REVERSE | A_BOLD);
         wrefresh(table_win);
         sleep(1);
+        print_footer(table_win, user, logged_in);
         continue;
       } else if (highlight != -1) {
         issue_tui(library[highlight], user, user_type, table_win, logged_in);
@@ -832,7 +1280,31 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'l':
-      login_tui(table_win, &logged_in, user, &user_type);
+      login_tui(table_win, &logged_in, user, user_type);
+      break;
+    case 'a':
+      if (logged_in == 0) {
+        wattron(table_win, A_REVERSE | A_BOLD);
+        mvwprintw(table_win, LINES - 1, 0, " %-*s ", COLS - 2, "Not Logged In");
+        wattroff(table_win, A_REVERSE | A_BOLD);
+        wrefresh(table_win);
+        sleep(1);
+        print_footer(table_win, user, logged_in);
+        continue;
+      } else if (user_type != 2) {
+        wattron(table_win, A_REVERSE | A_BOLD);
+        mvwprintw(table_win, LINES - 1, 0, " %-*s ", COLS - 2, "Not Admin");
+        wattroff(table_win, A_REVERSE | A_BOLD);
+        wrefresh(table_win);
+        sleep(1);
+        print_footer(table_win, user, logged_in);
+        continue;
+      } else {
+        admin = 'a';
+        admin_mode(&admin);
+      }
+      library = window(row, MAX_BOOKS);
+      display_books(table_win, library, MAX_BOOKS, user, logged_in);
       break;
     case 'A':
       signup_tui(table_win, user, &logged_in, &user_type);

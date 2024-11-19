@@ -93,8 +93,39 @@ int read_csv_range(const char *filename, int a, int b, Book **books,
   return 0;
 }
 
+// Helper function to convert a wide string to lowercase
+wchar_t *to_lowercase(const wchar_t *str) {
+  size_t len = wcslen(str);
+  wchar_t *lower_str = (wchar_t *)malloc((len + 1) * sizeof(wchar_t));
+  if (!lower_str)
+    return NULL;
+
+  for (size_t i = 0; i < len; ++i) {
+    lower_str[i] = towlower(str[i]);
+  }
+  lower_str[len] = L'\0';
+  return lower_str;
+}
+
 int contains_substring(const wchar_t *str, const wchar_t *substr) {
-  return wcsstr(str, substr) != NULL;
+  // Convert both strings to lowercase
+  wchar_t *lower_str = to_lowercase(str);
+  wchar_t *lower_substr = to_lowercase(substr);
+
+  if (!lower_str || !lower_substr) {
+    free(lower_str);
+    free(lower_substr);
+    return 0; // Memory allocation failure
+  }
+
+  // Perform the substring search
+  int result = wcsstr(lower_str, lower_substr) != NULL;
+
+  // Free the allocated memory
+  free(lower_str);
+  free(lower_substr);
+
+  return result;
 }
 
 Book *filter_books(const char *filename, const wchar_t *search_str, int row,

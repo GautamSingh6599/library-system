@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+#include <wctype.h>
 
 #pragma once
 #ifndef INCLUDE_INCLUDE_BOOK_H_

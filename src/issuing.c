@@ -144,9 +144,27 @@ int issuebook(const char *username, int user_type, const char *targetisbn) {
 
     // Parse the line
     char *token = strtok(line, ",");
-    if (token)
-      strncpy(isbn, token, sizeof(isbn) - 1);
-    isbn[sizeof(isbn) - 1] = '\0';
+    if (token) {
+      size_t len = strlen(token);
+
+      // Check if the last character is 'X' and remove it
+      if (len > 0 && token[len - 1] == 'X') {
+        token[len - 1] = '\0';
+        len--; // Adjust the length
+      }
+
+      // If token has fewer than 10 characters, pad with leading zeros
+      if (len < 10) {
+        size_t padding = 10 - len;  // Number of zeros to prepend
+        memset(isbn, '0', padding); // Fill initial part of isbn with '0'
+        strncpy(isbn + padding, token, sizeof(isbn) - padding - 1);
+      } else {
+        strncpy(isbn, token, sizeof(isbn) - 1);
+      }
+
+      // Ensure null termination
+      isbn[sizeof(isbn) - 1] = '\0';
+    }
 
     token = strtok(NULL, ",");
     if (token)
@@ -229,13 +247,13 @@ int returnbook(const char *username, const char *returnisbn) {
 
   FILE *issued_file = fopen(issued_filename, "r");
   if (issued_file == NULL) {
-    perror("Error opening issued.csv");
+    /*perror("Error opening issued.csv");*/
     return -1;
   }
 
   FILE *temp_issued_file = fopen("./data/.issued_temp.csv", "w");
   if (temp_issued_file == NULL) {
-    perror("Error creating temporary file to modify issued.csv");
+    /*perror("Error creating temporary file to modify issued.csv");*/
     fclose(issued_file);
     return -1;
   }
@@ -270,7 +288,7 @@ int returnbook(const char *username, const char *returnisbn) {
   if (!found_in_issued) {
     // printf("Error: No record found for user '%s' with ISBN '%s' in
     // issued.csv.\n", username, returnisbn);
-    perror("Error: User does not have this book issued.");
+    /*perror("Error: User does not have this book issued.");*/
     remove("issued_temp.csv");
     return -1;
   }
@@ -281,13 +299,13 @@ int returnbook(const char *username, const char *returnisbn) {
 
   FILE *books_file = fopen(books_filename, "r");
   if (books_file == NULL) {
-    perror("Error opening books.csv");
+    /*perror("Error opening books.csv");*/
     return -1;
   }
 
   FILE *temp_books_file = fopen("./data/.books_temp.csv", "w");
   if (temp_books_file == NULL) {
-    perror("Error creating temporary file for modifying books.csv");
+    /*perror("Error creating temporary file for modifying books.csv");*/
     fclose(books_file);
     return -1;
   }
@@ -340,7 +358,7 @@ int returnbook(const char *username, const char *returnisbn) {
   if (!book_found) {
     // printf("Error: Book with ISBN '%s' not found in books.csv.\n",
     // returnisbn);
-    perror("Book record not found in database.");
+    /*perror("Book record not found in database.");*/
     remove("./data/.books_temp.csv");
     return -1;
   }

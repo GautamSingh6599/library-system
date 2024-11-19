@@ -34,9 +34,27 @@ int book_remove(const char *removeisbn) {
 
     // Parse the line
     char *token = strtok(line, ",");
-    if (token)
-      strncpy(isbn, token, sizeof(isbn) - 1);
-    isbn[sizeof(isbn) - 1] = '\0';
+    if (token) {
+      size_t len = strlen(token);
+
+      // Check if the last character is 'X' and remove it
+      if (len > 0 && token[len - 1] == 'X') {
+        token[len - 1] = '\0';
+        len--; // Adjust the length
+      }
+
+      // If token has fewer than 10 characters, pad with leading zeros
+      if (len < 10) {
+        size_t padding = 10 - len;  // Number of zeros to prepend
+        memset(isbn, '0', padding); // Fill initial part of isbn with '0'
+        strncpy(isbn + padding, token, sizeof(isbn) - padding - 1);
+      } else {
+        strncpy(isbn, token, sizeof(isbn) - 1);
+      }
+
+      // Ensure null termination
+      isbn[sizeof(isbn) - 1] = '\0';
+    }
 
     token = strtok(NULL, ",");
     if (token)

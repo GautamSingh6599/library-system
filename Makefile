@@ -1,6 +1,6 @@
 CC = gcc
 N_FLAGS = -lncurses -lssl -lcrypto
-CFLAGS = -Werror -g
+CFLAGS = -Werror -g -std=gnu99
 SRC = src/tui.c src/book.c src/accounts.c src/issuing.c src/bookrecords.c src/chatbot.c
 # Header files
 INCLUDES = -I include/

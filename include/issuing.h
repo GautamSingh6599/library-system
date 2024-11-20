@@ -1,3 +1,7 @@
+#pragma once
+#ifndef INCLUDE_INCLUDE_ISSUING_H_
+#define INCLUDE_INCLUDE_ISSUING_H_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,3 +20,5 @@ void get_current_date(char *date_str, size_t max_len);
 IssuedBook *issuedbyuser(const char *username, int *count);
 int returnbook(const char *username, const char *returnisbn);
 int issuebook(const char *username, int user_type, const char *targetisbn);
+
+#endif // INCLUDE_INCLUDE_ISSUING_H_

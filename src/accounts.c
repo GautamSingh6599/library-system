@@ -16,7 +16,7 @@ void generate_random_string(char *str, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     str[i] = charset[rand() % charset_size];
   }
-  str[length] = '\0';
+  str[length - 1] = '\0';
 }
 
 // Function to compute the SHA256 hash of the salted password
@@ -61,7 +61,7 @@ int signup(const char *username, const char *password, int user_type) {
   }
 
   // Generate the salt
-  char salt[SALT_LENGTH + 1];
+  char salt[SALT_LENGTH];
   generate_random_string(salt, SALT_LENGTH);
 
   // Generate the hash of the salted password
@@ -88,7 +88,7 @@ int signup(const char *username, const char *password, int user_type) {
 int login(const char *username, const char *password, int *user_type) {
   const char *filename = "./data/users.csv";
   char line[MAX_LINE_LENGTH];
-  char file_username[71], salt[SALT_LENGTH + 1], spash[HASH_LENGTH];
+  char file_username[71], salt[SALT_LENGTH], spash[HASH_LENGTH];
   int user_found = 0;
   int found_user_type = -1;
 
@@ -111,7 +111,7 @@ int login(const char *username, const char *password, int *user_type) {
         token = strtok(NULL, ","); // Get salt
         if (token)
           strncpy(salt, token, SALT_LENGTH);
-        salt[SALT_LENGTH] = '\0';
+        salt[SALT_LENGTH - 1] = '\0';
 
         token = strtok(NULL, ","); // Get spash (hash of the salted password)
         if (token)

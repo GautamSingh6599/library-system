@@ -10,8 +10,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define _GNU_SOURCE
-
 // Function to print the header with dynamic column widths
 void print_header(WINDOW *win, int id_width, int isbn_width, int title_width,
                   int author_width, int copies_width) {

@@ -1238,9 +1238,14 @@ void issue_tui(Book book, char *username, int user_type, WINDOW *win,
                int logged_in) {
   char str[MAX_ISBN_LENGTH];
   sprintf(str, "%010lld", book.isbn);
-  int status = issuebook(username, user_type, str);
   int num_issued_books;
   issuedbyuser(username, &num_issued_books);
+  int status;
+  if (num_issued_books < 5)
+    status = issuebook(username, user_type, str);
+  else
+    status = 0;
+
   if (status == 0 && num_issued_books < 5) {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, LINES - 1, 0, " Book: %ls issued successfully %-*s ",
@@ -1261,7 +1266,7 @@ void issue_tui(Book book, char *username, int user_type, WINDOW *win,
     wattroff(win, A_REVERSE | A_BOLD);
     wrefresh(win);
     sleep(1);
-  } else if (num_issued_books == 5) {
+  } else if (num_issued_books >= 5) {
     wattron(win, A_REVERSE | A_BOLD);
     mvwprintw(win, LINES - 1, 0, " %-*s ", COLS,
               "Cannot issue more than 5 books");

@@ -4,9 +4,6 @@
 #include <string.h>
 
 const char *knowledge_base[MAX_SUBLISTS][MAX_STRINGS] = {
-    {"The key you need to click will be listed in the panel at the bottom.",
-     "How do I search?", "How to search?", "How do I find a book?",
-     "How to find a book?"},
     {"You navigate using vim keybindings.", "How do I move around?",
      "How do I navigate?", "How to scroll?", "How do I scroll?"},
     {"You can issue up to five books at a time.", "How many books can I issue?",
@@ -16,7 +13,10 @@ const char *knowledge_base[MAX_SUBLISTS][MAX_STRINGS] = {
      "Why can't I borrow this book?", "Why am I unable to borrow this book?",
      "What privileges do I have?"},
     {"You can ask me anything about how to use the library interface.",
-     "What can I ask you?", "What do you do?", "What can you do?"}
+     "What can I ask you?", "What do you do?", "What can you do?"},
+    {"You press colon and then type `a/foo` or `b/foo` or `ab/foo` to search in authors, books or both.",
+    "How do I search for a book?", "How do I find a book?", "How do find an author?",
+    "How do I search for an author?"}
 
 };
 

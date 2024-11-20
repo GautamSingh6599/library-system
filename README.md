@@ -4,6 +4,11 @@
 
 This repository contains the implementation of a library management system with a Text-based User Interface (TUI). The system allows users to interact with the library, issue books, manage accounts, and perform administrative tasks such as adding, editing, or removing books from the collection. The user interface is built using `ncurses` to provide an efficient and interactive way to manage the library system through the terminal.
 
+## Project Contributors
+
+1. Gautam Singh (22MS023)
+2. Rishab P. Hariharan (22MS045)
+
 ### Files Overview
 
 - **tui.h**: Contains the core functions for displaying and interacting with the TUI, including commands for displaying books, issuing books, and navigating the system.
@@ -15,7 +20,7 @@ This repository contains the implementation of a library management system with 
 
 ## Key Functions
 
-### TUI Functions (tui.h)
+### TUI Functions (tui.h, Gautam)
 
 - **print_header**: Displays the header of the book list table.
 - **print_issued_header**: Displays the header for the list of issued books.
@@ -32,27 +37,27 @@ This repository contains the implementation of a library management system with 
 - **issue_tui**: Facilitates book issuing for users based on their credentials.
 - **admin_mode**: Allows administrators to perform management tasks such as adding, editing, and removing books.
 
-### Issuing Functions (issuing.h)
+### Issuing Functions (issuing.h, Rishab)
 
 - **get_current_date**: Retrieves the current system date.
 - **issuedbyuser**: Retrieves a list of books issued by a specific user.
 - **returnbook**: Returns a book by a user.
 - **issuebook**: Issues a book to a user, depending on their user type (admin/user).
 
-### Chatbot Functions (chatbot.h)
+### Chatbot Functions (chatbot.h, Rishab)
 
 - **find_answer**: Searches for an answer to a user's query based on a knowledge base.
 - **strip_string**: Strips any unnecessary characters from the input string.
 - **tokenize**: Breaks down the input string into tokens (words).
 - **compute_similarity**: Measures the similarity between two input strings based on tokenization.
 
-### Book Management Functions (bookrecords.h)
+### Book Management Functions (bookrecords.h, Rishab)
 
 - **book_add**: Adds a new book to the library database.
 - **book_remove**: Removes a book from the library by its ISBN.
 - **change_copies**: Changes the number of copies available for a specific book.
 
-### Book Structure (book.h)
+### Book Structure (book.h, Gautam)
 
 - **Book**: Structure that defines a book with fields for ISBN, title, author, and the number of copies.
 - **window**: Returns a window of books starting from a specific index.
@@ -60,7 +65,7 @@ This repository contains the implementation of a library management system with 
 - **contains_substring**: Checks if a book's title or author contains a specific substring.
 - **filter_books**: Filters books based on a search string and returns the results.
 
-### Account Management Functions (accounts.h)
+### Account Management Functions (accounts.h, Rishab)
 
 - **generate_random_string**: Generates a random string of a specified length (useful for creating random account details).
 - **compute_sha256**: Computes the SHA-256 hash of a password or string.
@@ -122,10 +127,5 @@ This repository contains the implementation of a library management system with 
   - Remove books from the library.
 
 - **Chatbot**: The chatbot allows users to ask questions and get responses based on a predefined knowledge base.
-
-## Project Contributors
-
-1. Gautam Singh (22MS023)
-2. Rishab P. Hariharan ()
 
 This README provides an overview of the functionalities and setup for the library management system. It is designed to help users understand the core modules and quickly get started with the system.
